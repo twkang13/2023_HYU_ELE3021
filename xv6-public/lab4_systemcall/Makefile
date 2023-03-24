@@ -182,7 +182,8 @@ UPROGS=\
 	_stressfs\
 	_wc\
 	_zombie\
-	_my_userapp\
+	# myapp.c 추가
+	_myapp\
 
 fs.img: mkfs README $(UPROGS)
 	./mkfs fs.img README $(UPROGS)
@@ -255,7 +256,8 @@ EXTRA=\
 	printf.c umalloc.c\
 	README dot-bochsrc *.pl toc.* runoff runoff1 runoff.list\
 	.gdbinit.tmpl gdbutil\
-	printf.c umalloc.c _my_userapp.c\
+	# myapp.c 추가
+	printf.c umalloc.c _myapp.c\
 
 dist:
 	rm -rf dist
