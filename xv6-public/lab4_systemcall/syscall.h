@@ -20,5 +20,5 @@
 #define SYS_link   19
 #define SYS_mkdir  20
 #define SYS_close  21
-// SYS_myfunction을 22번으로 등록
+// SYS_myfunction을 22번으로 mapping
 #define SYS_myfunction 22
