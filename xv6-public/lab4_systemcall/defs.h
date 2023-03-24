@@ -186,7 +186,7 @@ void            switchkvm(void);
 int             copyout(pde_t*, uint, void*, uint);
 void            clearpteu(pde_t *pgdir, char *uva);
 
-// prac_syscall.c
+/* prac_syscall.c 의 myfunction 함수를 등록 */
 int             myfunction(char*);
 
 // number of elements in fixed-size array

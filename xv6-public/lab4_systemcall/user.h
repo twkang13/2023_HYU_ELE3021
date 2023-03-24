@@ -23,6 +23,7 @@ int getpid(void);
 char* sbrk(int);
 int sleep(int);
 int uptime(void);
+/* user.h에 myfunction 선언 */
 int myfunction(char*);
 
 // ulib.c

@@ -127,6 +127,7 @@ static int (*syscalls[])(void) = {
 [SYS_link]    sys_link,
 [SYS_mkdir]   sys_mkdir,
 [SYS_close]   sys_close,
+/* Wrapper function을 system call로 등록 */
 [SYS_myfunction]  sys_myfunction,
 };
 

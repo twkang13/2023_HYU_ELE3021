@@ -27,6 +27,7 @@ OBJS = \
 	uart.o\
 	vectors.o\
 	vm.o\
+	# Makefile에 prac_syscall.o 등록
 	prac_syscall.o\
 
 # Cross-compiling (e.g., on Mac OS X)
