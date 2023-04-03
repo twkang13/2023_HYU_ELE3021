@@ -20,8 +20,9 @@ tvinit(void)
   int i;
 
   for(i = 0; i < 256; i++)
-    SETGATE(idt[i], 0, SEG_KCODE<<3, vectors[i], 0);
-  SETGATE(idt[T_SYSCALL], 1, SEG_KCODE<<3, vectors[T_SYSCALL], DPL_USER);
+    SETGATE(idt[i], 0, SEG_KCODE<<3, vectors[i], 0); // default : kernel mode
+  SETGATE(idt[T_SYSCALL], 1, SEG_KCODE<<3, vectors[T_SYSCALL], DPL_USER); // exception : system call - user level
+  SETGATE(idt[T_USERINT], 1, SEG_KCODE<<3, vectors[T_USERINT], DPL_USER); // user interrupt (Practice)
 
   initlock(&tickslock, "time");
 }
@@ -76,6 +77,12 @@ trap(struct trapframe *tf)
     cprintf("cpu%d: spurious interrupt at %x:%x\n",
             cpuid(), tf->cs, tf->eip);
     lapiceoi();
+    break;
+
+  // User interrupt
+  case T_USERINT:
+    mycall();
+    exit();
     break;
 
   //PAGEBREAK: 13
