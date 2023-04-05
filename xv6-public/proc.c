@@ -90,7 +90,7 @@ found:
   p->pid = nextpid++;
 
   p->queue = 0; // Set new process's queue level to 0.
-  p->priority = 0; // Set new process's priority to 0.
+  p->priority = 3; // Set new process's priority to 3.
   cprintf("new process : %s, queue : %d, pid : %d\n", p->name, p->queue, p->pid); // for test
 
   release(&ptable.lock);
