@@ -89,6 +89,10 @@ found:
   p->state = EMBRYO;
   p->pid = nextpid++;
 
+  p->queue = 0; // Set new process's queue level to 0.
+  p->priority = 0; // Set new process's priority to 0.
+  cprintf("new process : %s, queue : %d, pid : %d\n", p->name, p->queue, p->pid); // for test
+
   release(&ptable.lock);
 
   // Allocate kernel stack.
@@ -215,6 +219,7 @@ fork(void)
   acquire(&ptable.lock);
 
   np->state = RUNNABLE;
+  cprintf("%s (pid : %d) RUNNABLE\n", np->name, np->pid); /* for a test */
 
   release(&ptable.lock);
 

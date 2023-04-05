@@ -44,6 +44,8 @@ struct proc {
   struct proc *parent;         // Parent process
   struct trapframe *tf;        // Trap frame for current syscall
   struct context *context;     // swtch() here to run process
+  int queue;                   // Level of queue
+  int priority;                // Priority (0~3, L0,L1 Queue : all process's priority = 0)
   void *chan;                  // If non-zero, sleeping on chan
   int killed;                  // If non-zero, have been killed
   struct file *ofile[NOFILE];  // Open files
