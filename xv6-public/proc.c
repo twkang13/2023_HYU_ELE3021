@@ -7,10 +7,12 @@
 #include "proc.h"
 #include "spinlock.h"
 
-struct {
+typedef struct {
   struct spinlock lock;
   struct proc proc[NPROC];
-} ptable;
+} PTABLE;
+
+PTABLE ptable, L0_queue, L1_queue, L2_queue;
 
 static struct proc *initproc;
 
@@ -23,7 +25,11 @@ static void wakeup1(void *chan);
 void
 pinit(void)
 {
-  initlock(&ptable.lock, "ptable");
+  initlock(&L0_queue.lock, "L0_queue");
+  initlock(&L1_queue.lock, "L1_queue");
+  initlock(&L2_queue.lock, "L2_queue");
+
+  ptable = L0_queue;
 }
 
 // Must be called with interrupts disabled
@@ -91,7 +97,7 @@ found:
 
   p->queue = 0; // Set new process's queue level to 0.
   p->priority = 3; // Set new process's priority to 3.
-  cprintf("new process : %s, queue : %d, pid : %d\n", p->name, p->queue, p->pid); // for test
+  cprintf("new process : %s, queue : %d, priority : %d, pid : %d\n", p->name, p->queue, p->priority, p->pid); // for test
 
   release(&ptable.lock);
 
@@ -337,10 +343,42 @@ scheduler(void)
 
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
-    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if(p->state != RUNNABLE)
-        continue;
 
+    // Level of queue that the scheduler is processing.
+    int qlevel = -1;
+    
+    // Check if there is a RUNNABLE process in the L0 queue.
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+      if(p->state == RUNNABLE){
+        qlevel = 0;
+        break;
+      }
+    }
+    // Check if there is a RUNNABLE process in the L1 queue.
+    if (qlevel == 0){
+      ptable = L1_queue;
+      for (p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+        if(p->state == RUNNABLE){
+          qlevel = 1;
+          break;
+        }
+      }
+      // The scheduler moves to L2_queue
+      if (qlevel != 1){
+        ptable = L2_queue;
+        qlevel = 2;
+      }
+    }
+
+    if (qlevel >= 0){ // for a test
+      cprintf("scheduler : %s, current process : %d\n", ptable.lock.name, ptable.proc->pid);
+      ptable = L0_queue;
+      cprintf("scheduler : %s, current process : %d\n", ptable.lock.name, ptable.proc->pid);
+    }
+
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+      if (p->state != RUNNABLE)
+        continue;
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
       // before jumping back to us.
@@ -355,6 +393,7 @@ scheduler(void)
       // It should have changed its p->state before coming back.
       c->proc = 0;
     }
+    cprintf("test\n");
     release(&ptable.lock);
 
   }
