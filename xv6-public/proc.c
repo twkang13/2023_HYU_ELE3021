@@ -220,7 +220,6 @@ fork(void)
   acquire(&ptable.lock);
 
   np->state = RUNNABLE;
-  cprintf("%s (pid : %d) RUNNABLE\n", np->name, np->pid); /* for a test */
 
   release(&ptable.lock);
 
@@ -357,6 +356,7 @@ scheduler(void)
         qlevel = L2;
     }
 
+    if (qlevel){} // temporal code to solve the error.
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
       if (p->state != RUNNABLE)
         continue;
@@ -411,6 +411,7 @@ yield(void)
 {
   acquire(&ptable.lock);  //DOC: yieldlock
   myproc()->state = RUNNABLE;
+  myproc()->runtime = 0; // Initialize runtime
   sched();
   release(&ptable.lock);
 }
