@@ -91,6 +91,7 @@ found:
 
   p->queue = L0; // Set new process's queue level to 0.
   p->priority = 3; // Set new process's priority to 3.
+  p->runtime = 0; // Set new process's runtime to 0.
   cprintf("new process : %s, queue : %d, priority : %d, pid : %d\n", p->name, p->queue, p->priority, p->pid); // for test
 
   release(&ptable.lock);
