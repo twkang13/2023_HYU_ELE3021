@@ -416,6 +416,13 @@ yield(void)
   release(&ptable.lock);
 }
 
+// Return queue level of the current process.
+int
+getLevel(void)
+{
+  return myproc()->queue;
+}
+
 // A fork child's very first scheduling by scheduler()
 // will swtch here.  "Return" to user space.
 void

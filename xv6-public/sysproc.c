@@ -42,6 +42,21 @@ sys_getpid(void)
   return myproc()->pid;
 }
 
+// Wrapper for yield
+int
+sys_yield(void)
+{
+  yield();
+  return 0;
+}
+
+// Wrapper for getLevel
+int
+sys_getLevel(void)
+{
+  return getLevel();
+}
+
 int
 sys_sbrk(void)
 {

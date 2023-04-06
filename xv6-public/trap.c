@@ -118,7 +118,7 @@ trap(struct trapframe *tf)
      tf->trapno == T_IRQ0+IRQ_TIMER){
      // Check if there is a process which spent all of time it got.
     if(myproc()->runtime >= 4 && myproc()->queue == L0){
-      cprintf("%s : timeout(%d)\n", myproc()->name, myproc()->runtime); // for a test
+      //cprintf("%s : timeout(%d)\n", myproc()->name, myproc()->runtime); // for a test
       yield();
     }
     else if(myproc()->runtime >= 6 && myproc()->queue == L1)

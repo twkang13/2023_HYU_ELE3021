@@ -15,5 +15,7 @@ int main(int argc, char* argv[]){
     int ret_val;
     ret_val = myfunction(buf);
     printf(1, "Return value : 0x%x\n", ret_val);
+    printf(1, "level : %d\n", getLevel()); // for a test
+    yield(); // for a test
     exit();
 };
