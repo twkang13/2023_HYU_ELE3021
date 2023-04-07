@@ -474,10 +474,21 @@ setPriority(int pid, int priority)
 }
 
 // Priority Boosting
+// Initialize a queue level, priority, runtime of all processes
 void
 boosting(void)
 {
-  
+  struct proc* p;
+
+  acquire(&ptable.lock);
+
+  for (p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    p->queue = L0;
+    p->priority = 3;
+    p->runtime = 0;
+  }
+
+  release(&ptable.lock);
 }
 
 // A fork child's very first scheduling by scheduler()

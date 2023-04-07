@@ -128,11 +128,17 @@ trap(struct trapframe *tf)
       yield();
     }
     // L2 Queue Timeout
-    else if (myproc()->runtime >= 8 && myproc()->queue == L2){
+    else if(myproc()->runtime >= 8 && myproc()->queue == L2){
       if(myproc()->priority > 0)
         --myproc()->priority;
       yield();
     }
+  }
+
+  // Priority boosting when ticks == 100
+  if(ticks >= 100){
+    boosting();
+    ticks = 0; // Initialize Global tick
   }
 
   // Check if the process has been killed since we yielded
