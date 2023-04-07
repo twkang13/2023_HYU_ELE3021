@@ -473,6 +473,13 @@ setPriority(int pid, int priority)
   release(&ptable.lock);
 }
 
+// Priority Boosting
+void
+boosting(void)
+{
+  
+}
+
 // A fork child's very first scheduling by scheduler()
 // will swtch here.  "Return" to user space.
 void
