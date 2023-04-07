@@ -53,7 +53,7 @@ trap(struct trapframe *tf)
       acquire(&tickslock);
       ticks++;
 
-      // Increment runtime
+      // Increment a runtime
       if(myproc() && myproc()->state==RUNNING)
         ++myproc()->runtime;
       
@@ -116,14 +116,23 @@ trap(struct trapframe *tf)
   if(myproc() && myproc()->state == RUNNING &&
      tf->trapno == T_IRQ0+IRQ_TIMER){
      // Check if there is a process which spent all of time it got.
+     // L0 Queue Timeout
     if(myproc()->runtime >= 4 && myproc()->queue == L0){
       //cprintf("%s : timeout(%d)\n", myproc()->name, myproc()->runtime); // for a test
+      myproc()->queue = L1; // Move the current process to the L1 queue.
       yield();
     }
-    else if(myproc()->runtime >= 6 && myproc()->queue == L1)
+    // L1 Queue Timeout
+    else if(myproc()->runtime >= 6 && myproc()->queue == L1){
+      myproc()->queue = L2; // Move the current process to the L2 queue.
       yield();
-    else if (myproc()->runtime >= 8 && myproc()->queue == L2)
+    }
+    // L2 Queue Timeout
+    else if (myproc()->runtime >= 8 && myproc()->queue == L2){
+      if(myproc()->priority > 0)
+        --myproc()->priority;
       yield();
+    }
   }
 
   // Check if the process has been killed since we yielded
