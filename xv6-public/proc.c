@@ -423,6 +423,25 @@ getLevel(void)
   return myproc()->queue;
 }
 
+// Set priority of the process 'pid'
+void
+setPriority(int pid, int priority)
+{
+  struct proc *p;
+  
+  acquire(&ptable.lock);
+
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if(p->pid == pid){
+      cprintf("set %d's priority to %d.\n", p->pid, priority);
+      p->priority = priority;
+      break;
+    }
+  }
+  
+  release(&ptable.lock);
+}
+
 // A fork child's very first scheduling by scheduler()
 // will swtch here.  "Return" to user space.
 void
@@ -555,7 +574,7 @@ procdump(void)
       state = states[p->state];
     else
       state = "???";
-    cprintf("%d %s %s", p->pid, state, p->name);
+    cprintf("%d %s %s %d", p->pid, state, p->name, p->priority);
     if(p->state == SLEEPING){
       getcallerpcs((uint*)p->context->ebp+2, pc);
       for(i=0; i<10 && pc[i] != 0; i++)

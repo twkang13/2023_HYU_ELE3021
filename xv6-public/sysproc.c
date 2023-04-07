@@ -57,6 +57,18 @@ sys_getLevel(void)
   return getLevel();
 }
 
+// Wrapper for setPriority
+int
+sys_setPriority(void)
+{
+  int pid, priority;
+
+  if (argint(0, &pid) < 0 || argint(1, &priority) < 0)
+    return -1;
+  setPriority(pid,priority);
+  return 0;
+}
+
 int
 sys_sbrk(void)
 {

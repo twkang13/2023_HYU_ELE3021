@@ -184,6 +184,7 @@ UPROGS=\
 	_zombie\
 	_myapp\
 	_prac2_usercall\
+	_syscall_test\
 
 fs.img: mkfs README $(UPROGS)
 	./mkfs fs.img README $(UPROGS)
@@ -256,7 +257,7 @@ EXTRA=\
 	printf.c umalloc.c\
 	README dot-bochsrc *.pl toc.* runoff runoff1 runoff.list\
 	.gdbinit.tmpl gdbutil\
-	printf.c umalloc.c _myapp.c\
+	printf.c umalloc.c myapp.c syscall_test.c\
 
 dist:
 	rm -rf dist

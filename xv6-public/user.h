@@ -24,8 +24,9 @@ char* sbrk(int);
 int sleep(int);
 int uptime(void);
 int myfunction(char*);
-int yield(void);
+void yield(void);
 int getLevel(void);
+void setPriority(int,int);
 
 // ulib.c
 int stat(const char*, struct stat*);

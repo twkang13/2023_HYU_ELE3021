@@ -87,7 +87,6 @@ trap(struct trapframe *tf)
   // User interrupt
   case T_USERINT:
     mycall();
-    exit();
     break;
 
   //PAGEBREAK: 13
