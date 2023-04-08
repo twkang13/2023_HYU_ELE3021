@@ -10,10 +10,16 @@
 struct {
   struct spinlock lock;
   struct proc proc[NPROC];
-  struct proc* L0_queue; // L0 Queue
-  struct proc* L1_queue; // L1 Queue
-  struct proc* L2_queue; // L2 Queue
 } ptable;
+
+static struct proc L0_header; // L0 Queue
+static struct proc *L0_queue = &L0_header;
+
+static struct proc L1_header; // L1 Queue;
+static struct proc *L1_queue = &L1_header;
+
+static struct proc L2_header; // L2 Queue;
+static struct proc *L2_queue = &L2_header;
 
 static struct proc *initproc;
 
@@ -93,7 +99,6 @@ found:
   p->pid = nextpid++;
 
   p->queue = L0; // Set new process's queue level to 0.
-  
   p->next = 0; // Initialize next process
 
   p->priority = 3; // Set new process's priority to 3.
@@ -136,6 +141,16 @@ userinit(void)
 
   p = allocproc();
   
+  // Initializing queues
+  L0_queue->next = 0;
+  L1_queue->next = 0;
+  L2_queue->next = 0;
+
+  addListEnd(p, L0_queue);
+  cprintf("L0 : %p, L1 : %p, L2 : %p\n\n", L0_queue->next, L1_queue->next, L2_queue->next); // for a test
+  //deleteList(p, L0_queue);
+  //cprintf("L0 : %p, L1 : %p, L2 : %p\n\n", L0_queue->next, L1_queue->next, L2_queue->next); // for a test
+
   initproc = p;
   if((p->pgdir = setupkvm()) == 0)
     panic("userinit: out of memory?");
@@ -152,7 +167,7 @@ userinit(void)
 
   safestrcpy(p->name, "initcode", sizeof(p->name));
   p->cwd = namei("/");
-
+  
   // this assignment to p->state lets other cores
   // run this process. the acquire forces the above
   // writes to be visible, and the lock is also needed
