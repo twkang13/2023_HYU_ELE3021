@@ -45,6 +45,7 @@ struct proc {
   struct trapframe *tf;        // Trap frame for current syscall
   struct context *context;     // swtch() here to run process
   int queue;                   // Level of queue (L0 ~ L2)
+  struct proc *next;           // next process of queue
   int priority;                // Priority (0~3, L0,L1 Queue : all process's priority = 3)
   int runtime;                 // runtime of the process.
   void *chan;                  // If non-zero, sleeping on chan

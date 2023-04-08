@@ -10,6 +10,9 @@
 struct {
   struct spinlock lock;
   struct proc proc[NPROC];
+  struct proc* L0_queue; // L0 Queue
+  struct proc* L1_queue; // L1 Queue
+  struct proc* L2_queue; // L2 Queue
 } ptable;
 
 static struct proc *initproc;
@@ -90,6 +93,9 @@ found:
   p->pid = nextpid++;
 
   p->queue = L0; // Set new process's queue level to 0.
+  
+  p->next = 0; // Initialize next process
+
   p->priority = 3; // Set new process's priority to 3.
   p->runtime = 0; // Set new process's runtime to 0.
   cprintf("new process : %s, queue : %d, priority : %d, pid : %d\n", p->name, p->queue, p->priority, p->pid); // for test
@@ -377,13 +383,13 @@ scheduler(void)
     }
     // L2 Queue : Priority Scheduling
     else if(qlevel == L2){
-      struct proc* finalproc = '\0';
+      struct proc* finalproc = 0;
 
       for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
         if(p->state != RUNNABLE || p->queue != L2)
           continue;
 
-        if(finalproc == '\0')
+        if(!finalproc)
           finalproc = p;
         else{
           // Check priority
@@ -395,7 +401,7 @@ scheduler(void)
         }
       }
       
-      if (finalproc != '\0'){
+      if (finalproc){
         c->proc = finalproc;
         switchuvm(finalproc);
         p->state = RUNNING;

@@ -122,6 +122,7 @@ void            wakeup(void*);
 void            yield(void);
 int             getLevel(void);
 void            setPriority(int,int);
+void            boosting(void);
 
 // swtch.S
 void            swtch(struct context**, struct context*);
