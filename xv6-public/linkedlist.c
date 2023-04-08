@@ -12,9 +12,10 @@ int
 addListEnd(struct proc* proc, struct proc* queue)
 {
     struct proc* prev = queue;
+
     while(prev->next)
         prev = prev->next;
-    prev->next = queue;
+    prev->next = proc;
 
     return 0;
 }
@@ -58,4 +59,18 @@ getNumList(struct proc* queue)
     }
 
     return num;
+}
+
+// print elements of queue. (For debugging)
+int
+printList(struct proc* queue)
+{
+    struct proc* cur = queue->next;
+    while(cur){
+        cprintf("%d -> ", cur->pid);
+        cur = cur->next;
+    }
+    cprintf("\n");
+
+    return 0;
 }

@@ -100,6 +100,8 @@ found:
 
   p->queue = L0; // Set new process's queue level to 0.
   p->next = 0; // Initialize next process
+  addListEnd(p, L0_queue);
+  printList(L0_queue);
 
   p->priority = 3; // Set new process's priority to 3.
   p->runtime = 0; // Set new process's runtime to 0.
