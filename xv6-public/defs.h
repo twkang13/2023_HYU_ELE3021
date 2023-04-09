@@ -127,6 +127,7 @@ void            boosting(void);
 // linkedlist.c
 int             addListEnd(struct proc*, struct proc*);
 int             addListFront(struct proc*, struct proc*);
+int             isLast(struct proc*, struct proc*);
 int             deleteList(struct proc*, struct proc*);
 int             getNumList(struct proc*);
 int             printList(struct proc*);

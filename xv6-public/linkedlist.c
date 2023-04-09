@@ -31,13 +31,28 @@ addListFront(struct proc* proc, struct proc* queue)
     return 0;
 }
 
-// Delele proc from the queue 'queue' -> 애도 뭔가 이상한데,, isLast 함수 구현하기
+// Return 1 if proc is the last element of the queue 'queue'
+int
+isLast(struct proc* proc, struct proc* queue)
+{
+    struct proc* cur = queue;
+    while(cur->next)
+        cur = cur->next;
+    return proc == cur;
+}
+
+// Delele proc from the queue 'queue'
 int
 deleteList(struct proc* proc, struct proc* queue)
 {
-    struct proc* prev = queue->next;
+    struct proc* prev = queue;
     while(prev->next->next)
         prev = prev->next;
+
+    if(isLast(prev, queue)){
+        cprintf("ERROR : process with id '%d' is not in a queue '%d'\n", proc->pid, proc->queue);
+        return 0;
+    }
     
     struct proc* tmp = proc->next;
     prev->next = tmp;
@@ -61,7 +76,7 @@ getNumList(struct proc* queue)
     return num;
 }
 
-// print elements of queue. (For debugging)
+// Print all elements of queue. (For debugging)
 int
 printList(struct proc* queue)
 {

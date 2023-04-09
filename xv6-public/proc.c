@@ -378,8 +378,32 @@ scheduler(void)
       else
         qlevel = L2;
     }
-    // L0, L1 Queue : Round-Robin
-    if(qlevel == L0 || qlevel == L1){
+    // L0 : Round-Robin
+    if(qlevel == L0){
+      if(isLast(p, L0_queue))
+        p = L0_queue->next;
+
+      do{
+        // Switch to chosen process.  It is the process's job
+        // to release ptable.lock and then reacquire it
+        // before jumping back to us.
+        c->proc = p;
+        switchuvm(p);
+        p->state = RUNNING;
+
+        cprintf("L0_queue Scheduling\n"); // for a test
+        swtch(&(c->scheduler), p->context);
+        switchkvm();
+
+        // Process is done running for now.
+        // It should have changed its p->state before coming back.
+        c->proc = 0;
+
+        p = p->next;
+      } while(p);
+    }
+    // L1 : Round-Robin
+    if(qlevel == L1){
       for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
         if(p->state != RUNNABLE || p->queue != qlevel)
           continue;
