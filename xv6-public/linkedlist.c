@@ -7,11 +7,6 @@
 #include "proc.h"
 #include "spinlock.h"
 
-// linkedlist.c 내의 함수 사용 시 unexpected trap 14 발생,,
-// unexpeceted trap 14 : Page Fault
-// proc.c에 linked list 관련 함수 넣어놓는 것으로 임시적 문제 해결
-// 문제 해결 방안 찾아보기
-
 // Add proc to the end of the queue 'queue'
 int
 addListEnd(struct proc* proc, struct proc* queue)
@@ -51,7 +46,8 @@ int
 deleteList(struct proc* proc, struct proc* queue)
 {
     struct proc* prev = queue;
-    while(prev->next->next)
+
+    while(prev->next != 0 && prev->next != proc)
         prev = prev->next;
 
     if(isLast(prev, queue)){
@@ -59,9 +55,8 @@ deleteList(struct proc* proc, struct proc* queue)
         return 0;
     }
     
-    struct proc* tmp = proc->next;
-    prev->next = tmp;
-    proc->next = 0;
+    struct proc* tmp = prev->next;
+    prev->next = tmp->next;
 
     return 0;
 }
@@ -79,18 +74,4 @@ getNumList(struct proc* queue)
     }
 
     return num;
-}
-
-// Print all elements of queue. (For debugging)
-int
-printList(struct proc* queue)
-{
-    struct proc* cur = queue->next;
-    while(cur){
-        cprintf("%d -> ", cur->pid);
-        cur = cur->next;
-    }
-    cprintf("\n");
-
-    return 0;
 }

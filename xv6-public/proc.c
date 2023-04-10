@@ -87,13 +87,6 @@ allocproc(void)
 
   acquire(&ptable.lock);
 
-  /*
-  cprintf("******** allocproc ********\n"); // 왜 새로운 process가 생기면 ptable이 초기화 되는걸까...
-  for(struct proc* tmp = ptable.proc; tmp < &ptable.proc[NPROC]; tmp++)
-    cprintf("pid '%d' : queue - %d; next : %p, ", tmp->pid, tmp->queue, tmp->next); // next는 초기화 안되는데 queue만 초기화
-  cprintf("\n");
-  */
-
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
     if(p->state == UNUSED)
       goto found;
@@ -107,12 +100,12 @@ found:
 
   p->queue = L0; // Set new process's queue level to 0.
   p->next = 0; // Initialize next process
-  //addListEnd(p, L0_queue);
+  addListEnd(p, L0_queue);
 
   p->priority = 3; // Set new process's priority to 3.
   p->runtime = 0; // Set new process's runtime to 0.
 
-  //cprintf("pid '%d' : queue : %d, priority : %d, name : %s\n", p->pid, p->queue, p->priority, p->name); // for test
+  cprintf("pid '%d' : queue : %d, priority : %d, name : %s\n", p->pid, p->queue, p->priority, p->name); // for test
 
   release(&ptable.lock);
 
@@ -151,11 +144,11 @@ userinit(void)
   p = allocproc();
   
   // Initializing queues
-  //L0_queue->next = 0;
-  //L1_queue->next = 0;
-  //L2_queue->next = 0;
+  L0_queue->next = 0;
+  L1_queue->next = 0;
+  L2_queue->next = 0;
 
-  //L0_queue->next = p;
+  L0_queue->next = p;
 
   initproc = p;
   if((p->pgdir = setupkvm()) == 0)
@@ -279,6 +272,16 @@ exit(void)
   end_op();
   curproc->cwd = 0;
 
+  // Delete current process from its queue when it terminates.
+  cprintf("pid '%d' : terminate\n", curproc->pid);
+  
+  if(curproc->queue == L0)
+    deleteList(curproc, L0_queue);
+  else if(curproc->queue == L1)
+    deleteList(curproc, L1_queue);
+  else if(curproc->queue == L2)
+    deleteList(curproc, L2_queue);
+
   acquire(&ptable.lock);
 
   // Parent might be sleeping in wait().
@@ -367,7 +370,7 @@ scheduler(void)
 
     // Level of queue that the scheduler is processing.
     int qlevel;
-    
+
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
       // Check if there is a RUNNABLE process in the L0 queue.
       if(p->state == RUNNABLE && p->queue == L0){
@@ -400,6 +403,8 @@ scheduler(void)
         p->state = RUNNING;
         p->runtime = 0; // Initialize runtime
 
+        cprintf("pid '%d' : L0_Scheduling\n", p->pid);
+
         swtch(&(c->scheduler), p->context);
         switchkvm();
 
@@ -421,6 +426,8 @@ scheduler(void)
         p->state = RUNNING;
         p->runtime = 0; // Initialize runtime
 
+        cprintf("pid '%d' : L1_Scheduling\n", p->pid);
+
         swtch(&(c->scheduler), p->context);
         switchkvm();
 
@@ -441,6 +448,8 @@ scheduler(void)
         switchuvm(p);
         p->state = RUNNING;
         p->runtime = 0; // Initialize runtime
+
+        cprintf("pid '%d' : L2_Scheduling\n", p->pid);
 
         swtch(&(c->scheduler), p->context);
         switchkvm();
@@ -487,10 +496,12 @@ yield(void)
 {
   acquire(&ptable.lock);  //DOC: yieldlock
   myproc()->state = RUNNABLE;
+  
   /*
   cprintf("******** yield ********\n");
   for(struct proc* tmp = ptable.proc; tmp < &ptable.proc[NPROC]; tmp++){
-    cprintf("pid '%d' : queue - %d; next : %p, ", tmp->pid, tmp->queue, tmp->next);
+    if(tmp->state != UNUSED)
+      cprintf("pid '%d' : queue - %d; next : %p, ", tmp->pid, tmp->queue, tmp->next);
   }
   cprintf("\n"); // for test
   */
@@ -521,10 +532,6 @@ setPriority(int pid, int priority)
       break;
     }
   }
-
-  for(struct proc* tmp = ptable.proc; tmp < &ptable.proc[NPROC]; tmp++)
-      cprintf("pid '%d' : priority - %d, ", tmp->pid, tmp->priority);
-  cprintf("\n");
   
   release(&ptable.lock);
 }
