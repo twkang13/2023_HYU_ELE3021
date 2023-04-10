@@ -54,8 +54,10 @@ trap(struct trapframe *tf)
       ticks++;
 
       // Increment a runtime
-      if(myproc() && myproc()->state==RUNNING)
+      if(myproc() && myproc()->state==RUNNING){
         ++myproc()->runtime;
+        //cprintf("pid '%d' : runtime - %d\n", myproc()->pid, myproc()->runtime);
+      }
       
       wakeup(&ticks);
       release(&tickslock);
@@ -113,22 +115,20 @@ trap(struct trapframe *tf)
 
   // Force process to give up CPU on clock tick.
   // If interrupts were on while locks held, would need to check nlock.
-  if(myproc() && myproc()->state == RUNNING &&
-     tf->trapno == T_IRQ0+IRQ_TIMER){
+  if(myproc() && myproc()->state == RUNNING){
      // Check if there is a process which spent all of time it got.
      // L0 Queue Timeout
-    if(myproc()->runtime >= 0 && myproc()->queue == L0){
-      //cprintf("%s : timeout(%d)\n", myproc()->name, myproc()->runtime); // for a test
+    if(myproc()->runtime >= 4 && myproc()->queue == L0){
       myproc()->queue = L1; // Move the current process to the L1 queue.
       yield();
     }
     // L1 Queue Timeout
-    else if(myproc()->runtime >= 6 && myproc()->queue == L1){
+    if(myproc()->runtime >= 6 && myproc()->queue == L1){
       myproc()->queue = L2; // Move the current process to the L2 queue.
       yield();
     }
     // L2 Queue Timeout
-    else if(myproc()->runtime >= 8 && myproc()->queue == L2){
+    if(myproc()->runtime >= 8 && myproc()->queue == L2){
       if(myproc()->priority > 0)
         --myproc()->priority;
       yield();

@@ -12,14 +12,14 @@ struct {
   struct proc proc[NPROC];
 } ptable;
 
-static struct proc L0_header; // L0 Queue
-static struct proc *L0_queue = &L0_header;
+struct proc L0_header; // L0 Queue
+struct proc *L0_queue = &L0_header;
 
-static struct proc L1_header; // L1 Queue;
-static struct proc *L1_queue = &L1_header;
+struct proc L1_header; // L1 Queue;
+struct proc *L1_queue = &L1_header;
 
-static struct proc L2_header; // L2 Queue;
-static struct proc *L2_queue = &L2_header;
+struct proc L2_header; // L2 Queue;
+struct proc *L2_queue = &L2_header;
 
 static struct proc *initproc;
 
@@ -87,6 +87,13 @@ allocproc(void)
 
   acquire(&ptable.lock);
 
+  /*
+  cprintf("******** allocproc ********\n"); // 왜 새로운 process가 생기면 ptable이 초기화 되는걸까...
+  for(struct proc* tmp = ptable.proc; tmp < &ptable.proc[NPROC]; tmp++)
+    cprintf("pid '%d' : queue - %d; next : %p, ", tmp->pid, tmp->queue, tmp->next); // next는 초기화 안되는데 queue만 초기화
+  cprintf("\n");
+  */
+
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
     if(p->state == UNUSED)
       goto found;
@@ -100,12 +107,12 @@ found:
 
   p->queue = L0; // Set new process's queue level to 0.
   p->next = 0; // Initialize next process
-  addListEnd(p, L0_queue);
-  printList(L0_queue);
+  //addListEnd(p, L0_queue);
 
   p->priority = 3; // Set new process's priority to 3.
   p->runtime = 0; // Set new process's runtime to 0.
-  cprintf("new process : %s, queue : %d, priority : %d, pid : %d\n", p->name, p->queue, p->priority, p->pid); // for test
+
+  //cprintf("pid '%d' : queue : %d, priority : %d, name : %s\n", p->pid, p->queue, p->priority, p->name); // for test
 
   release(&ptable.lock);
 
@@ -144,14 +151,11 @@ userinit(void)
   p = allocproc();
   
   // Initializing queues
-  L0_queue->next = 0;
-  L1_queue->next = 0;
-  L2_queue->next = 0;
+  //L0_queue->next = 0;
+  //L1_queue->next = 0;
+  //L2_queue->next = 0;
 
-  addListEnd(p, L0_queue);
-  cprintf("L0 : %p, L1 : %p, L2 : %p\n\n", L0_queue->next, L1_queue->next, L2_queue->next); // for a test
-  //deleteList(p, L0_queue);
-  //cprintf("L0 : %p, L1 : %p, L2 : %p\n\n", L0_queue->next, L1_queue->next, L2_queue->next); // for a test
+  //L0_queue->next = p;
 
   initproc = p;
   if((p->pgdir = setupkvm()) == 0)
@@ -375,37 +379,18 @@ scheduler(void)
         qlevel = L1;
         break;
       }
-      else
+      // Check if there is a RUNNABLE process in the L2 queue.
+      else if(p->queue == L2 && p->state == RUNNABLE){
         qlevel = L2;
+        break;
+      }
+      qlevel = L0;
     }
+
     // L0 : Round-Robin
     if(qlevel == L0){
-      if(isLast(p, L0_queue))
-        p = L0_queue->next;
-
-      do{
-        // Switch to chosen process.  It is the process's job
-        // to release ptable.lock and then reacquire it
-        // before jumping back to us.
-        c->proc = p;
-        switchuvm(p);
-        p->state = RUNNING;
-
-        cprintf("L0_queue Scheduling\n"); // for a test
-        swtch(&(c->scheduler), p->context);
-        switchkvm();
-
-        // Process is done running for now.
-        // It should have changed its p->state before coming back.
-        c->proc = 0;
-
-        p = p->next;
-      } while(p);
-    }
-    // L1 : Round-Robin
-    if(qlevel == L1){
       for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-        if(p->state != RUNNABLE || p->queue != qlevel)
+        if(p->state != RUNNABLE || p->queue != L0)
           continue;
         // Switch to chosen process.  It is the process's job
         // to release ptable.lock and then reacquire it
@@ -413,6 +398,28 @@ scheduler(void)
         c->proc = p;
         switchuvm(p);
         p->state = RUNNING;
+        p->runtime = 0; // Initialize runtime
+
+        swtch(&(c->scheduler), p->context);
+        switchkvm();
+
+        // Process is done running for now.
+        // It should have changed its p->state before coming back.
+        c->proc = 0;
+      }
+    }
+    // L1 : Round-Robin
+    if(qlevel == L1){
+      for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+        if(p->state != RUNNABLE || p->queue != L1)
+          continue;
+        // Switch to chosen process.  It is the process's job
+        // to release ptable.lock and then reacquire it
+        // before jumping back to us.
+        c->proc = p;
+        switchuvm(p);
+        p->state = RUNNING;
+        p->runtime = 0; // Initialize runtime
 
         swtch(&(c->scheduler), p->context);
         switchkvm();
@@ -423,36 +430,27 @@ scheduler(void)
       }
     }
     // L2 Queue : Priority Scheduling
-    else if(qlevel == L2){
-      struct proc* finalproc = 0;
-
+    if(qlevel == L2){
       for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
         if(p->state != RUNNABLE || p->queue != L2)
           continue;
-
-        if(!finalproc)
-          finalproc = p;
-        else{
-          // Check priority
-          if(p->priority > finalproc->priority)
-            finalproc = p;
-          // FCFS
-          else if((p->priority == finalproc->priority) && (p->pid < finalproc->pid))
-            finalproc = p;
-        }
-      }
-      
-      if (finalproc){
-        c->proc = finalproc;
-        switchuvm(finalproc);
+        // Switch to chosen process.  It is the process's job
+        // to release ptable.lock and then reacquire it
+        // before jumping back to us.
+        c->proc = p;
+        switchuvm(p);
         p->state = RUNNING;
+        p->runtime = 0; // Initialize runtime
 
-        swtch(&(c->scheduler), finalproc->context);
+        swtch(&(c->scheduler), p->context);
         switchkvm();
 
+        // Process is done running for now.
+        // It should have changed its p->state before coming back.
         c->proc = 0;
       }
     }
+
     release(&ptable.lock);
   }
 }
@@ -489,7 +487,14 @@ yield(void)
 {
   acquire(&ptable.lock);  //DOC: yieldlock
   myproc()->state = RUNNABLE;
-  myproc()->runtime = 0; // Initialize runtime
+  /*
+  cprintf("******** yield ********\n");
+  for(struct proc* tmp = ptable.proc; tmp < &ptable.proc[NPROC]; tmp++){
+    cprintf("pid '%d' : queue - %d; next : %p, ", tmp->pid, tmp->queue, tmp->next);
+  }
+  cprintf("\n"); // for test
+  */
+
   sched();
   release(&ptable.lock);
 }
@@ -516,6 +521,10 @@ setPriority(int pid, int priority)
       break;
     }
   }
+
+  for(struct proc* tmp = ptable.proc; tmp < &ptable.proc[NPROC]; tmp++)
+      cprintf("pid '%d' : priority - %d, ", tmp->pid, tmp->priority);
+  cprintf("\n");
   
   release(&ptable.lock);
 }

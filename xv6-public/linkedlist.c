@@ -7,6 +7,11 @@
 #include "proc.h"
 #include "spinlock.h"
 
+// linkedlist.c 내의 함수 사용 시 unexpected trap 14 발생,,
+// unexpeceted trap 14 : Page Fault
+// proc.c에 linked list 관련 함수 넣어놓는 것으로 임시적 문제 해결
+// 문제 해결 방안 찾아보기
+
 // Add proc to the end of the queue 'queue'
 int
 addListEnd(struct proc* proc, struct proc* queue)
@@ -16,7 +21,7 @@ addListEnd(struct proc* proc, struct proc* queue)
     while(prev->next)
         prev = prev->next;
     prev->next = proc;
-
+    
     return 0;
 }
 
