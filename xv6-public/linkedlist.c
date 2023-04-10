@@ -24,8 +24,7 @@ addListEnd(struct proc* proc, struct proc* queue)
 int
 addListFront(struct proc* proc, struct proc* queue)
 {
-    struct proc* tmp = queue->next;
-    proc->next = tmp;
+    proc->next = queue->next;
     queue->next = proc;
 
     return 0;
@@ -57,6 +56,7 @@ deleteList(struct proc* proc, struct proc* queue)
     
     struct proc* tmp = prev->next;
     prev->next = tmp->next;
+    proc->next = 0;
 
     return 0;
 }
