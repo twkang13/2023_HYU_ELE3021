@@ -131,7 +131,6 @@ int             addListEnd(struct proc*, struct proc*);
 int             addListFront(struct proc*, struct proc*);
 int             isLast(struct proc*, struct proc*);
 int             deleteList(struct proc*, struct proc*);
-int             getNumList(struct proc*);
 
 // swtch.S
 void            swtch(struct context**, struct context*);

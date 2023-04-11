@@ -148,13 +148,12 @@ trap(struct trapframe *tf)
     }
   }
 
-  // Priority boosting when ticks >= 100
-  /*
+  // Priority boosting when ticks >= 100.
   if(ticks >= 100){
     boosting();
-    ticks = 0; // Initialize Global tick
+    ticks = 0; // Initialize Global ticks
   }
-  */
+  
 
   // Check if the process has been killed since we yielded
   if(myproc() && myproc()->killed && (tf->cs&3) == DPL_USER)

@@ -60,18 +60,3 @@ deleteList(struct proc* proc, struct proc* queue)
 
     return 0;
 }
-
-// Get the number of processes in the queue 'queue' -> 작동 확인해보기
-int
-getNumList(struct proc* queue)
-{
-    int num = 0;
-    struct proc* cur = queue;
-    
-    while(cur->next){
-        ++num;
-        cur = cur->next;
-    }
-
-    return num;
-}

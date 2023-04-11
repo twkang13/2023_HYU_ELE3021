@@ -471,8 +471,8 @@ scheduler(void)
 
         c->proc = 0;
       }
-      //else
-        //panic("L2_queue is empty.\n"); - queue가 비었을땐 어뜨케 하지
+      else
+        panic("L2_queue is empty.\n");
     }
 
     release(&ptable.lock);
@@ -511,15 +511,6 @@ yield(void)
 {
   acquire(&ptable.lock);  //DOC: yieldlock
   myproc()->state = RUNNABLE;
-  
-  /*
-  cprintf("******** yield ********\n");
-  for(struct proc* tmp = ptable.proc; tmp < &ptable.proc[NPROC]; tmp++){
-    if(tmp->state != UNUSED)
-      cprintf("pid '%d' : queue - %d; next : %p, ", tmp->pid, tmp->queue, tmp->next);
-  }
-  cprintf("\n"); // for test
-  */
 
   sched();
   release(&ptable.lock);
@@ -535,14 +526,12 @@ getLevel(void)
 // Set priority of the process 'pid'
 void
 setPriority(int pid, int priority)
-{
-  struct proc *p;
-  
+{  
   acquire(&ptable.lock);
+  struct proc *p;
 
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     if(p->pid == pid){
-      cprintf("set %d's priority to %d.\n", p->pid, priority);
       p->priority = priority;
       break;
     }
@@ -556,14 +545,31 @@ setPriority(int pid, int priority)
 void
 boosting(void)
 {
-  struct proc* p;
-
   acquire(&ptable.lock);
 
-  for (p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+  // Initializing processes in L0 queue
+  for(struct proc* p = L0_queue->next; p != 0; p = p->next){
     p->queue = L0;
     p->priority = 3;
     p->runtime = 0;
+  }
+  // Initializing processes in L1 queue
+  for(struct proc* p = L1_queue->next; p != 0; p = p->next){
+    p->queue = L0;
+    p->priority = 3;
+    p->runtime = 0;
+    
+    deleteList(p, L1_queue);
+    addListEnd(p, L0_queue);
+  }
+  // Initialzing processes in L2 queue
+  for(struct proc* p = L2_queue->next; p != 0; p = p->next){
+    p->queue = L0;
+    p->priority = 3;
+    p->runtime = 0;
+
+    deleteList(p, L2_queue);
+    addListEnd(p, L0_queue);
   }
 
   release(&ptable.lock);
