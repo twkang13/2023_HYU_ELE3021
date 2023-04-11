@@ -100,7 +100,7 @@ found:
 
   p->queue = L0; // Set new process's queue level to 0.
   p->next = 0; // Initialize next process
-  addListEnd(p, L0_queue);
+  addListFront(p, L0_queue);
 
   p->priority = 3; // Set new process's priority to 3.
   p->runtime = 0; // Set new process's runtime to 0.
@@ -389,12 +389,13 @@ scheduler(void)
       }
       qlevel = L0;
     }
-
     // L0 : Round-Robin
     if(qlevel == L0){
-      for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-        if(p->state != RUNNABLE || p->queue != L0)
+      for(p = L0_queue->next; p != 0; p = p->next){
+        if(p->state != RUNNABLE)
           continue;
+
+        cprintf("pid '%d' : L0_Scheduling\n", p->pid);
         // Switch to chosen process.  It is the process's job
         // to release ptable.lock and then reacquire it
         // before jumping back to us.
@@ -402,8 +403,6 @@ scheduler(void)
         switchuvm(p);
         p->state = RUNNING;
         p->runtime = 0; // Initialize runtime
-
-        cprintf("pid '%d' : L0_Scheduling\n", p->pid);
 
         swtch(&(c->scheduler), p->context);
         switchkvm();
@@ -415,26 +414,64 @@ scheduler(void)
     }
     // L1 : Round-Robin
     if(qlevel == L1){
-      for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-        if(p->state != RUNNABLE || p->queue != L1)
+      for(p = L1_queue->next; p != 0; p = p->next){
+        if(p->state != RUNNABLE)
           continue;
-        // Switch to chosen process.  It is the process's job
-        // to release ptable.lock and then reacquire it
-        // before jumping back to us.
+
+        cprintf("pid '%d' : L1_Scheduling\n", p->pid);
+
         c->proc = p;
         switchuvm(p);
         p->state = RUNNING;
         p->runtime = 0; // Initialize runtime
 
-        cprintf("pid '%d' : L1_Scheduling\n", p->pid);
+        swtch(&(c->scheduler), p->context);
+        switchkvm();
+
+        c->proc = 0;
+      }
+    }
+    // L2 Queue : Priority Scheduling
+    if(qlevel == L2){
+      cprintf("pid '%d' : L2_Scheduling\n", p->pid);
+      struct proc *finalproc = 0;
+      // Find the process that its priority is 0.
+      for(p = L2_queue->next; p != 0; p = p->next){
+        if(p->state == RUNNABLE && p->priority == 0)
+          finalproc = p;
+      }
+      // Find the process that its priority is 1.
+      if(finalproc == 0)
+        for(p = L2_queue->next; p != 0; p = p->next){
+          if(p->state == RUNNABLE && p->priority == 1)
+            finalproc = p;
+        }
+      // Find the process that its priority is 2.
+      if(finalproc == 0)
+        for(p = L2_queue->next; p != 0; p = p->next){
+          if(p->state == RUNNABLE && p->priority == 2)
+            finalproc = p;
+        }
+      // Find the process that its priority is 3.
+      if(finalproc == 0)
+        for(p = L2_queue->next; p != 0; p = p->next){
+          if(p->state == RUNNABLE && p->priority == 3)
+            finalproc = p;
+        }
+
+      if(finalproc != 0){
+        c->proc = p;
+        switchuvm(p);
+        p->state = RUNNING;
+        p->runtime = 0; // Initialize runtime
 
         swtch(&(c->scheduler), p->context);
         switchkvm();
 
-        // Process is done running for now.
-        // It should have changed its p->state before coming back.
         c->proc = 0;
       }
+      //else
+        //panic("L2_queue is empty.\n"); - queue가 비었을땐 어뜨케 하지
     }
     // L2 Queue : Priority Scheduling
     if(qlevel == L2){
