@@ -26,6 +26,8 @@
 // processor defined exceptions or interrupt vectors.
 #define T_SYSCALL       64      // system call
 #define T_USERINT      128      // user interrupt
+#define T_SCHLOCK      129      // scheduler lock
+#define T_SCHUNLOCK    130      // scheduler unlock
 #define T_DEFAULT      500      // catchall
 
 #define T_IRQ0          32      // IRQ 0 corresponds to int T_IRQ
@@ -36,4 +38,3 @@
 #define IRQ_IDE         14
 #define IRQ_ERROR       19
 #define IRQ_SPURIOUS    31
-

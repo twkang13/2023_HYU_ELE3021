@@ -23,6 +23,8 @@ tvinit(void)
     SETGATE(idt[i], 0, SEG_KCODE<<3, vectors[i], 0); // default : kernel mode
   SETGATE(idt[T_SYSCALL], 1, SEG_KCODE<<3, vectors[T_SYSCALL], DPL_USER); // exception : system call - user level
   SETGATE(idt[T_USERINT], 1, SEG_KCODE<<3, vectors[T_USERINT], DPL_USER); // user interrupt (Practice)
+  SETGATE(idt[T_SCHLOCK], 1, SEG_KCODE<<3, vectors[T_SCHLOCK], DPL_USER); // scheduler lock - user level
+  SETGATE(idt[T_SCHUNLOCK], 1, SEG_KCODE<<3, vectors[T_SCHUNLOCK], DPL_USER); // scheduler unlock - user level
 
   initlock(&tickslock, "time");
 }
@@ -37,10 +39,16 @@ idtinit(void)
 void
 trap(struct trapframe *tf)
 {
-  if(tf->trapno == T_SYSCALL){
+  if(tf->trapno == T_SYSCALL || tf->trapno == T_SCHLOCK || tf->trapno == T_SCHUNLOCK){
     if(myproc()->killed)
       exit();
     myproc()->tf = tf;
+
+    if(tf->trapno == T_SCHLOCK)
+      myproc()->tf->eax = 26;
+    else if(tf->trapno == T_SCHUNLOCK)
+      myproc()->tf->eax = 27;
+
     syscall();
     if(myproc()->killed)
       exit();
@@ -83,9 +91,7 @@ trap(struct trapframe *tf)
             cpuid(), tf->cs, tf->eip);
     lapiceoi();
     break;
-
-  // User interrupt
-  case T_USERINT:
+  case T_USERINT: // User Interrupt
     mycall();
     break;
 

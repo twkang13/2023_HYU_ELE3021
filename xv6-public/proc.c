@@ -104,6 +104,7 @@ found:
 
   p->priority = 3; // Set new process's priority to 3.
   p->runtime = 0; // Set new process's runtime to 0.
+  p->monoploize = 0; // Set new process's occupy to 0. ('0' indicates that the process does not monoploize the scheduler.)
 
   cprintf("pid '%d' : queue : %d, priority : %d, name : %s\n", p->pid, p->queue, p->priority, p->name); // for test
 
@@ -566,6 +567,59 @@ boosting(void)
   }
 
   release(&ptable.lock);
+}
+
+// If password matches, Indicate that the current process monopolizes the scheduler.
+// If not, print an error message ans exits the current process.
+void
+schedulerLock(int password)
+{
+  acquire(&ptable.lock);
+  struct proc *p = myproc();
+
+  // If password matches
+  if(password == 2021025205){
+    p->monoploize = 1;
+    /*
+    cprintf("pid '%d' : monopolizes(ticks - %d)\n", p->pid, ticks);
+    ticks = 0;
+    cprintf("pid '%d' : monopolizes(ticks - %d)\n", p->pid, ticks);
+    */
+    release(&ptable.lock);
+  }
+  // If not
+  else {
+    cprintf("ERROR : Wrong Password\n");
+    cprintf("pid : %d\ttime quantum : %d\tqueue level : %d\n", p->pid, p->runtime, p->queue);
+    cprintf("Exit the current process.\n");
+    release(&ptable.lock);
+    exit();
+  }
+}
+
+// If password matches, Break monopoly and initialize the current process's runtime & priority.
+// Then, push the process at the head of L0_queue.
+// If not, print an error message ans exits the current process.
+void
+schedulerUnlock(int password)
+{
+  acquire(&ptable.lock);
+  struct proc *p = myproc();
+
+  if(password == 2021025205){
+    p->monoploize = 0;
+    p->runtime = 0;
+    p->priority = 3;
+    addListFront(p, L0_queue);
+    release(&ptable.lock);
+  }
+  else{
+    cprintf("ERROR : Wrong Password\n");
+    cprintf("pid : %d\ttime quantum : %d\tqueue level : %d\n", p->pid, p->runtime, p->queue);
+    cprintf("Exit the current process.\n");
+    release(&ptable.lock);
+    exit();
+  }
 }
 
 // A fork child's very first scheduling by scheduler()

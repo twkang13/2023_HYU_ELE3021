@@ -123,6 +123,8 @@ void            yield(void);
 int             getLevel(void);
 void            setPriority(int,int);
 void            boosting(void);
+void            schedulerLock(int);
+void            schedulerUnlock(int);
 
 // linkedlist.c
 int             addListEnd(struct proc*, struct proc*);
