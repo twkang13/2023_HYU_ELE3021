@@ -119,21 +119,6 @@ trap(struct trapframe *tf)
     if(myproc()->runtime >= 4 && myproc()->queue == L0){
       myproc()->queue = L1; // Move the current process to the L1 queue.
 
-      cprintf("L0 : ");
-      for(struct proc* temp = L0_queue->next; temp != 0; temp = temp->next){
-        cprintf("%d ", temp->pid);
-      }
-      cprintf("\nL1 : ");
-      for(struct proc* temp = L1_queue->next; temp != 0; temp = temp->next){
-        cprintf("%d ", temp->pid);
-      }
-      cprintf("\nL2 : ");
-      for(struct proc* temp = L2_queue->next; temp != 0; temp = temp->next){
-        cprintf("%d ", temp->pid);
-      }
-      cprintf("\n");
-      cprintf("pid '%d' : L0->L1\n", myproc()->pid);
-
       deleteList(myproc(), L0_queue);
       addListEnd(myproc(), L1_queue);
 
@@ -143,23 +128,9 @@ trap(struct trapframe *tf)
     if(myproc()->runtime >= 6 && myproc()->queue == L1){
       myproc()->queue = L2; // Move the current process to the L2 queue.
 
-      cprintf("L0 : ");
-      for(struct proc* temp = L0_queue->next; temp != 0; temp = temp->next){
-        cprintf("%d ", temp->pid);
-      }
-      cprintf("\nL1 : ");
-      for(struct proc* temp = L1_queue->next; temp != 0; temp = temp->next){
-        cprintf("%d ", temp->pid);
-      }
-      cprintf("\nL2 : ");
-      for(struct proc* temp = L2_queue->next; temp != 0; temp = temp->next){
-        cprintf("%d ", temp->pid);
-      }
-      cprintf("\n");
-      cprintf("pid '%d' : L1->L2\n", myproc()->pid);
-
       deleteList(myproc(), L1_queue);
       addListEnd(myproc(), L2_queue);
+
       yield();
     }
     // L2 Queue Timeout
@@ -167,21 +138,6 @@ trap(struct trapframe *tf)
       if(myproc()->priority > 0)
         --myproc()->priority;
 
-      cprintf("L0 : ");
-      for(struct proc* temp = L0_queue->next; temp != 0; temp = temp->next){
-        cprintf("%d ", temp->pid);
-      }
-      cprintf("\nL1 : ");
-      for(struct proc* temp = L1_queue->next; temp != 0; temp = temp->next){
-        cprintf("%d ", temp->pid);
-      }
-      cprintf("\nL2 : ");
-      for(struct proc* temp = L2_queue->next; temp != 0; temp = temp->next){
-        cprintf("%d ", temp->pid);
-      }
-      cprintf("\n");
-      cprintf("pid '%d' : L2->L2\n", myproc()->pid);
-      
       yield();
     }
   }

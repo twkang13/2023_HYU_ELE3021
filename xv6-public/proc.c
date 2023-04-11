@@ -395,7 +395,6 @@ scheduler(void)
         if(p->state != RUNNABLE)
           continue;
 
-        cprintf("pid '%d' : L0_Scheduling\n", p->pid);
         // Switch to chosen process.  It is the process's job
         // to release ptable.lock and then reacquire it
         // before jumping back to us.
@@ -418,8 +417,6 @@ scheduler(void)
         if(p->state != RUNNABLE)
           continue;
 
-        cprintf("pid '%d' : L1_Scheduling\n", p->pid);
-
         c->proc = p;
         switchuvm(p);
         p->state = RUNNING;
@@ -433,12 +430,13 @@ scheduler(void)
     }
     // L2 Queue : Priority Scheduling
     if(qlevel == L2){
-      cprintf("pid '%d' : L2_Scheduling\n", p->pid);
       struct proc *finalproc = 0;
+
       // Find the process that its priority is 0.
       for(p = L2_queue->next; p != 0; p = p->next){
-        if(p->state == RUNNABLE && p->priority == 0)
+        if(p->state == RUNNABLE && p->priority == 0){
           finalproc = p;
+        }
       }
       // Find the process that its priority is 1.
       if(finalproc == 0)
@@ -455,46 +453,25 @@ scheduler(void)
       // Find the process that its priority is 3.
       if(finalproc == 0)
         for(p = L2_queue->next; p != 0; p = p->next){
-          if(p->state == RUNNABLE && p->priority == 3)
+          if(p->state == RUNNABLE && p->priority == 3){
             finalproc = p;
+          }
         }
 
+      // Switch to chosen process.
       if(finalproc != 0){
-        c->proc = p;
-        switchuvm(p);
-        p->state = RUNNING;
-        p->runtime = 0; // Initialize runtime
+        c->proc = finalproc;
+        switchuvm(finalproc);
+        finalproc->state = RUNNING;
+        finalproc->runtime = 0; // Initialize runtime
 
-        swtch(&(c->scheduler), p->context);
+        swtch(&(c->scheduler), finalproc->context);
         switchkvm();
 
         c->proc = 0;
       }
       //else
         //panic("L2_queue is empty.\n"); - queue가 비었을땐 어뜨케 하지
-    }
-    // L2 Queue : Priority Scheduling
-    if(qlevel == L2){
-      for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-        if(p->state != RUNNABLE || p->queue != L2)
-          continue;
-        // Switch to chosen process.  It is the process's job
-        // to release ptable.lock and then reacquire it
-        // before jumping back to us.
-        c->proc = p;
-        switchuvm(p);
-        p->state = RUNNING;
-        p->runtime = 0; // Initialize runtime
-
-        cprintf("pid '%d' : L2_Scheduling\n", p->pid);
-
-        swtch(&(c->scheduler), p->context);
-        switchkvm();
-
-        // Process is done running for now.
-        // It should have changed its p->state before coming back.
-        c->proc = 0;
-      }
     }
 
     release(&ptable.lock);
