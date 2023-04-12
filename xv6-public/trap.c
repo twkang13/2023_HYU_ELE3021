@@ -125,7 +125,7 @@ trap(struct trapframe *tf)
     tf->trapno == T_IRQ0 + IRQ_TIMER){
      // Check if there is a process which spent all of time it got.
      // L0 Queue Timeout
-    if(myproc()->runtime >= 4 && myproc()->queue == L0 && myproc()->lock == 0){
+    if(myproc()->runtime >= 4 && myproc()->queue == L0 && myproc()->monopoly == 0){
       myproc()->queue = L1; // Move the current process to the L1 queue.
 
       deleteList(myproc(), L0_queue);
@@ -134,7 +134,7 @@ trap(struct trapframe *tf)
       myproc()->runtime = 0;
     }
     // L1 Queue Timeout
-    if(myproc()->runtime >= 6 && myproc()->queue == L1 && myproc()->lock == 0){
+    if(myproc()->runtime >= 6 && myproc()->queue == L1 && myproc()->monopoly == 0){
       myproc()->queue = L2; // Move the current process to the L2 queue.
 
       deleteList(myproc(), L1_queue);
@@ -143,7 +143,7 @@ trap(struct trapframe *tf)
       myproc()->runtime = 0;
     }
     // L2 Queue Timeout
-    if(myproc()->runtime >= 8 && myproc()->queue == L2 && myproc()->lock == 0){
+    if(myproc()->runtime >= 8 && myproc()->queue == L2 && myproc()->monopoly == 0){
       if(myproc()->priority > 0)
         --myproc()->priority;
 
@@ -155,8 +155,9 @@ trap(struct trapframe *tf)
 
   // Priority boosting when ticks >= 100.
   if(ticks >= 100){
+    if(schlock)
+      //schedulerUnlock(2021025205);
     boosting();
-    ticks = 0; // Initialize Global ticks
   }
   
 

@@ -48,7 +48,7 @@ struct proc {
   struct proc *next;           // next process of queue
   int priority;                // Priority (0~3, L0,L1 Queue : all process's priority = 3)
   int runtime;                 // runtime of the process.
-  int lock;                    // check if the process locks the scheduler.
+  int monopoly;                // check if the process monopolizes the scheduler.
   void *chan;                  // If non-zero, sleeping on chan
   int killed;                  // If non-zero, have been killed
   struct file *ofile[NOFILE];  // Open files
@@ -59,6 +59,8 @@ struct proc {
 extern struct proc *L0_queue;  // L0_queue
 extern struct proc *L1_queue;  // L1_queue
 extern struct proc *L2_queue;  // L2_queue
+
+extern int schlock;
 
 // Process memory is laid out contiguously, low addresses first:
 //   text
