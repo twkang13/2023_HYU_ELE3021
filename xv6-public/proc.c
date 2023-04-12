@@ -273,7 +273,7 @@ exit(void)
   end_op();
   curproc->cwd = 0;
 
-  // Delete current process from its queue when it terminates.  
+  // Delete current process from its queue when it terminates.
   if(curproc->queue == L0)
     deleteList(curproc, L0_queue);
   else if(curproc->queue == L1)
@@ -367,7 +367,7 @@ scheduler(void)
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
 
-    // If the process lock the scheduler, deal with the process first.
+     // If the process lock the scheduler, deal with the process first.
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
       if(p->lock == 1 && p->state == RUNNABLE){
         c->proc = p;
@@ -403,6 +403,7 @@ scheduler(void)
       }
       qlevel = L0;
     }
+
     // L0, L1 : Round-Robin
     if(qlevel == L0 || qlevel == L1){
       struct proc* queue = 0;
@@ -453,7 +454,7 @@ scheduler(void)
             finalproc = p;
         }
       // Find the process that its priority is 3.
-      if(finalproc == 0 && finalproc->lock == 0)
+      if(finalproc == 0)
         for(p = L2_queue->next; p != 0; p = p->next){
           if(p->state == RUNNABLE && p->priority == 3){
             finalproc = p;
@@ -462,14 +463,19 @@ scheduler(void)
 
       // Switch to chosen process.
       if(finalproc != 0){
-        c->proc = finalproc;
-        switchuvm(finalproc);
-        finalproc->state = RUNNING;
+        // Check if the scheduler is locked.
+        if(finalproc->lock != 0)
+          cprintf("ERROR : current process(pid : '%d') already locked the scheduler.\n", finalproc->pid);
+        else{
+          c->proc = finalproc;
+          switchuvm(finalproc);
+          finalproc->state = RUNNING;
 
-        swtch(&(c->scheduler), finalproc->context);
-        switchkvm();
+          swtch(&(c->scheduler), finalproc->context);
+          switchkvm();
 
-        c->proc = 0;
+          c->proc = 0;
+        }
       }
       else
         panic("L2_queue is empty.\n");
@@ -583,15 +589,18 @@ schedulerLock(int password)
   acquire(&ptable.lock);
   struct proc *p = myproc();
 
-
   // Check if the current process is in the list of existing processes.
+  int lockable = 0;
   for(struct proc* tmp = ptable.proc; tmp < &ptable.proc[NPROC]; tmp++){
-    if(tmp == p)
+    if(tmp == p){
+      lockable = 1;
       break;
-    
+    }
+  }
+  if(!lockable){
     cprintf("ERROR : current process does not exists in the ptable.\n");
-    cprintf("Cannot lock the scheduler.\n");
-    return;
+    cprintf("        Failed to lock the scheduler.\n");
+    exit();
   }
 
   // If password matches
