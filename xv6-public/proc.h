@@ -48,7 +48,7 @@ struct proc {
   struct proc *next;           // next process of queue
   int priority;                // Priority (0~3, L0,L1 Queue : all process's priority = 3)
   int runtime;                 // runtime of the process.
-  int monoploize;              // check if the process monopolizes the scheduler.
+  int lock;                    // check if the process locks the scheduler.
   void *chan;                  // If non-zero, sleeping on chan
   int killed;                  // If non-zero, have been killed
   struct file *ofile[NOFILE];  // Open files

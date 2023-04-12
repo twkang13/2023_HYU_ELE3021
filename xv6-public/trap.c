@@ -39,16 +39,10 @@ idtinit(void)
 void
 trap(struct trapframe *tf)
 {
-  if(tf->trapno == T_SYSCALL || tf->trapno == T_SCHLOCK || tf->trapno == T_SCHUNLOCK){
+  if(tf->trapno == T_SYSCALL){
     if(myproc()->killed)
       exit();
     myproc()->tf = tf;
-
-    if(tf->trapno == T_SCHLOCK)
-      myproc()->tf->eax = 26;
-    else if(tf->trapno == T_SCHUNLOCK)
-      myproc()->tf->eax = 27;
-
     syscall();
     if(myproc()->killed)
       exit();
@@ -62,8 +56,10 @@ trap(struct trapframe *tf)
       ticks++;
 
       // Increment a runtime
-      if(myproc() && myproc()->state==RUNNING)
+      if(myproc() && myproc()->state==RUNNING){
         ++myproc()->runtime;
+        //cprintf("pid '%d' : runtime - %d\n", myproc()->pid, myproc()->runtime);
+      }
       
       wakeup(&ticks);
       release(&tickslock);
@@ -94,6 +90,12 @@ trap(struct trapframe *tf)
   case T_USERINT: // User Interrupt
     mycall();
     break;
+  case T_SCHLOCK:
+    schedulerLock(2021025205); // parameter 확인 필요
+    break;
+  case T_SCHUNLOCK:
+    schedulerUnlock(2021025205);
+    break;
 
   //PAGEBREAK: 13
   default:
@@ -119,7 +121,8 @@ trap(struct trapframe *tf)
 
   // Force process to give up CPU on clock tick.
   // If interrupts were on while locks held, would need to check nlock.
-  if(myproc() && myproc()->state == RUNNING){
+  if(myproc() && myproc()->state == RUNNING &&
+    tf->trapno == T_IRQ0 + IRQ_TIMER){
      // Check if there is a process which spent all of time it got.
      // L0 Queue Timeout
     if(myproc()->runtime >= 4 && myproc()->queue == L0){
@@ -128,7 +131,7 @@ trap(struct trapframe *tf)
       deleteList(myproc(), L0_queue);
       addListEnd(myproc(), L1_queue);
 
-      yield();
+      myproc()->runtime = 0;
     }
     // L1 Queue Timeout
     if(myproc()->runtime >= 6 && myproc()->queue == L1){
@@ -137,15 +140,17 @@ trap(struct trapframe *tf)
       deleteList(myproc(), L1_queue);
       addListEnd(myproc(), L2_queue);
 
-      yield();
+      myproc()->runtime = 0;
     }
     // L2 Queue Timeout
     if(myproc()->runtime >= 8 && myproc()->queue == L2){
       if(myproc()->priority > 0)
         --myproc()->priority;
 
-      yield();
+      myproc()->runtime = 0;
     }
+
+    yield();
   }
 
   // Priority boosting when ticks >= 100.

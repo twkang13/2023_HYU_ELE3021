@@ -104,7 +104,7 @@ found:
 
   p->priority = 3; // Set new process's priority to 3.
   p->runtime = 0; // Set new process's runtime to 0.
-  p->monoploize = 0; // Set new process's occupy to 0. ('0' indicates that the process does not monoploize the scheduler.)
+  p->lock = 0; // Set new process's lock to 0. ('0' indicates that the process does not monoploize the scheduler.)
 
   cprintf("pid '%d' : queue : %d, priority : %d, name : %s\n", p->pid, p->queue, p->priority, p->name); // for test
 
@@ -273,9 +273,7 @@ exit(void)
   end_op();
   curproc->cwd = 0;
 
-  // Delete current process from its queue when it terminates.
-  cprintf("pid '%d' : terminate\n", curproc->pid);
-  
+  // Delete current process from its queue when it terminates.  
   if(curproc->queue == L0)
     deleteList(curproc, L0_queue);
   else if(curproc->queue == L1)
@@ -369,6 +367,21 @@ scheduler(void)
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
 
+    // If the process lock the scheduler, deal with the process first.
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+      if(p->lock == 1 && p->state == RUNNABLE){
+        c->proc = p;
+        switchuvm(p);
+        p->state = RUNNING;
+
+        swtch(&(c->scheduler), p->context);
+        switchkvm();
+
+        c->proc = 0;
+        break;
+      }
+    }
+
     // Level of queue that the scheduler is processing.
     int qlevel;
 
@@ -390,10 +403,16 @@ scheduler(void)
       }
       qlevel = L0;
     }
-    // L0 : Round-Robin
-    if(qlevel == L0){
-      for(p = L0_queue->next; p != 0; p = p->next){
-        if(p->state != RUNNABLE)
+    // L0, L1 : Round-Robin
+    if(qlevel == L0 || qlevel == L1){
+      struct proc* queue = 0;
+      if(qlevel == L0)
+        queue = L0_queue;
+      else if(qlevel == L1)
+        queue = L1_queue;
+
+      for(p = queue->next; p != 0; p = p->next){
+        if(p->state != RUNNABLE || p->lock != 0)
           continue;
 
         // Switch to chosen process.  It is the process's job
@@ -402,30 +421,12 @@ scheduler(void)
         c->proc = p;
         switchuvm(p);
         p->state = RUNNING;
-        p->runtime = 0; // Initialize runtime
 
         swtch(&(c->scheduler), p->context);
         switchkvm();
 
         // Process is done running for now.
         // It should have changed its p->state before coming back.
-        c->proc = 0;
-      }
-    }
-    // L1 : Round-Robin
-    if(qlevel == L1){
-      for(p = L1_queue->next; p != 0; p = p->next){
-        if(p->state != RUNNABLE)
-          continue;
-
-        c->proc = p;
-        switchuvm(p);
-        p->state = RUNNING;
-        p->runtime = 0; // Initialize runtime
-
-        swtch(&(c->scheduler), p->context);
-        switchkvm();
-
         c->proc = 0;
       }
     }
@@ -452,7 +453,7 @@ scheduler(void)
             finalproc = p;
         }
       // Find the process that its priority is 3.
-      if(finalproc == 0)
+      if(finalproc == 0 && finalproc->lock == 0)
         for(p = L2_queue->next; p != 0; p = p->next){
           if(p->state == RUNNABLE && p->priority == 3){
             finalproc = p;
@@ -464,7 +465,6 @@ scheduler(void)
         c->proc = finalproc;
         switchuvm(finalproc);
         finalproc->state = RUNNING;
-        finalproc->runtime = 0; // Initialize runtime
 
         swtch(&(c->scheduler), finalproc->context);
         switchkvm();
@@ -583,14 +583,25 @@ schedulerLock(int password)
   acquire(&ptable.lock);
   struct proc *p = myproc();
 
+
+  // Check if the current process is in the list of existing processes.
+  for(struct proc* tmp = ptable.proc; tmp < &ptable.proc[NPROC]; tmp++){
+    if(tmp == p)
+      break;
+    
+    cprintf("ERROR : current process does not exists in the ptable.\n");
+    cprintf("Cannot lock the scheduler.\n");
+    return;
+  }
+
   // If password matches
   if(password == 2021025205){
-    p->monoploize = 1;
-    /*
+    p->lock = 1;
+    
     cprintf("pid '%d' : monopolizes(ticks - %d)\n", p->pid, ticks);
     ticks = 0;
     cprintf("pid '%d' : monopolizes(ticks - %d)\n", p->pid, ticks);
-    */
+    
     release(&ptable.lock);
   }
   // If not
@@ -613,7 +624,7 @@ schedulerUnlock(int password)
   struct proc *p = myproc();
 
   if(password == 2021025205){
-    p->monoploize = 0;
+    p->lock = 0;
     p->runtime = 0;
     p->priority = 3;
     addListFront(p, L0_queue);
