@@ -163,7 +163,7 @@ trap(struct trapframe *tf)
   // Priority boosting when ticks >= 100.
   if(ticks >= 100){
     if(schlock)
-      //schedulerUnlock(2021025205);
+      schedulerUnlock(2021025205);
     boosting();
   }
   

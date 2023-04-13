@@ -391,7 +391,7 @@ scheduler(void)
     // If not, scheduler works.
     else{
       // Level of queue that the scheduler is processing.
-      int qlevel = getqueuelev();
+      int qlevel = getQueueLev();
 
       // L0, L1 : Round-Robin
       if(qlevel == L0 || qlevel == L1){
@@ -404,8 +404,10 @@ scheduler(void)
         for(p = queue->next; p != 0; p = p->next){
           // If there a process in L0 queue when qlevel is L1,
           // break for loop to schedule L0 queue.
-          if(qlevel == L1 && qlevel != getqueuelev())
+          if(qlevel == L1 && qlevel != getQueueLev()){
+            cprintf("pid '%d' : Rescheduling.\n", p->pid);
             break;
+          }
 
           if(p->state != RUNNABLE || p->monopoly != 0)
             continue;
@@ -431,35 +433,36 @@ scheduler(void)
 
         // Find the process that its priority is 0.
         for(p = L2_queue->next; p != 0; p = p->next){
-          if(p->state == RUNNABLE && p->priority == 0){
+          if(p->state == RUNNABLE && p->priority == 0 && p->monopoly == 0){
             finalproc = p;
           }
         }
         // Find the process that its priority is 1.
         if(finalproc == 0)
           for(p = L2_queue->next; p != 0; p = p->next){
-            if(p->state == RUNNABLE && p->priority == 1)
+            if(p->state == RUNNABLE && p->priority == 1 && p->monopoly == 0)
               finalproc = p;
           }
         // Find the process that its priority is 2.
         if(finalproc == 0)
           for(p = L2_queue->next; p != 0; p = p->next){
-            if(p->state == RUNNABLE && p->priority == 2)
+            if(p->state == RUNNABLE && p->priority == 2 && p->monopoly == 0)
               finalproc = p;
           }
         // Find the process that its priority is 3.
         if(finalproc == 0)
           for(p = L2_queue->next; p != 0; p = p->next){
-            if(p->state == RUNNABLE && p->priority == 3){
+            if(p->state == RUNNABLE && p->priority == 3 && p->monopoly == 0){
               finalproc = p;
             }
           }
 
         // Switch to chosen process.
         if(finalproc != 0){
-          // Check if the scheduler is locked.
+          // If the scheduler is locked.
           if(finalproc->monopoly != 0)
             cprintf("ERROR : Current process(pid : '%d') already locked the scheduler.\n", finalproc->pid);
+          // If the scheduler is unlocked.
           else{
             c->proc = finalproc;
             switchuvm(finalproc);
@@ -468,11 +471,16 @@ scheduler(void)
             swtch(&(c->scheduler), finalproc->context);
             switchkvm();
 
+            // Process is done running for now.
+            finalproc = 0;
             c->proc = 0;
           }
         }
-        else
-          panic("L2_queue is empty.\n"); // 이것도 이상함
+        else{
+          cprintf("queue is empty.\n"); // 이것도 이상함,, L2에 있는 process가 종료된 다음에 queue가 비었을 때 왜 이게 무한 반복되는거지
+          release(&ptable.lock);
+          continue;
+        }
       }
     }
 
@@ -543,11 +551,11 @@ setPriority(int pid, int priority)
 
 // Get a level of queue that scheduler is going to deal with.
 int
-getqueuelev(void)
+getQueueLev(void)
 {
-  int qlevel; // Level of queue that the scheduler is processing.
+  int qlevel = L0; // Level of queue that the scheduler is processing.
 
-  for(struct proc* p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+  for(struct proc* p = ptable.proc; p < &ptable.proc[NPROC] && p->monopoly == 0; p++){
     // Check if there is a RUNNABLE process in the L0 queue.
     if(p->state == RUNNABLE && p->queue == L0){
       qlevel = L0;
@@ -563,8 +571,6 @@ getqueuelev(void)
       qlevel = L2;
       break;
     }
-
-    qlevel = L0;
   }
   
   return qlevel;
@@ -576,9 +582,6 @@ void
 boosting(void)
 {
   acquire(&ptable.lock);
-
-  if(schlock == 0)
-    schedulerUnlock(2021025205);
 
   // Initializing processes in L0 queue
   for(struct proc* p = L0_queue->next; p != 0; p = p->next){
@@ -614,7 +617,6 @@ boosting(void)
 void
 schedulerLock(int password)
 {
-  acquire(&ptable.lock);
   struct proc *p = myproc();
 
   // Check if the current process is in the list of existing processes.
@@ -639,15 +641,12 @@ schedulerLock(int password)
 
     cprintf("pid '%d' : Scheduler Lock\n", myproc()->pid);
     proc_lock = p;
-    
-    release(&ptable.lock);
   }
   // If not
   else {
     cprintf("ERROR : Wrong Password\n");
     cprintf("pid : %d\ttime quantum : %d\tqueue level : %d\n", p->pid, p->runtime, p->queue);
     cprintf("Exit the current process.\n");
-    release(&ptable.lock);
     exit();
   }
 }
@@ -658,14 +657,22 @@ schedulerLock(int password)
 void
 schedulerUnlock(int password)
 {
-  acquire(&ptable.lock);
   struct proc *p = myproc();
-  cprintf("test\n");
 
   if(password == 2021025205){
     p->monopoly = 0;
     p->runtime = 0;
     p->priority = 3;
+
+    // Delete priority process from a queue.
+    if(p->queue == L0)
+      deleteList(p, L0_queue);
+    else if(p->queue == L1)
+      deleteList(p, L1_queue);
+    else if(p->queue == L2)
+      deleteList(p, L2_queue);
+
+    // Insert priority process to L0_queue.
     addListFront(p, L0_queue);
 
     schlock = 0;
@@ -674,7 +681,6 @@ schedulerUnlock(int password)
   else{
     cprintf("ERROR : Wrong Password\n");
     cprintf("pid : %d\ttime quantum : %d\tqueue level : %d\n", p->pid, p->runtime, p->queue);
-    release(&ptable.lock);
     exit();
   }
 }

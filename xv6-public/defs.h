@@ -113,7 +113,7 @@ struct proc*    myproc();
 void            pinit(void);
 void            procdump(void);
 void            scheduler(void) __attribute__((noreturn));
-int             getqueuelev(void);
+int             getQueueLev(void);
 void            sched(void);
 void            setproc(struct proc*);
 void            sleep(void*, struct spinlock*);
