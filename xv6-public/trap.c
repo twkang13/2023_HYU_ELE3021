@@ -131,6 +131,9 @@ trap(struct trapframe *tf)
       deleteList(myproc(), L0_queue);
       addListEnd(myproc(), L1_queue);
 
+      printList();
+      cprintf("pid '%d' : L0->L1\n", myproc()->pid);
+
       myproc()->runtime = 0;
     }
     // L1 Queue Timeout
@@ -140,6 +143,9 @@ trap(struct trapframe *tf)
       deleteList(myproc(), L1_queue);
       addListEnd(myproc(), L2_queue);
 
+      printList();
+      cprintf("pid '%d' : L1->L2\n", myproc()->pid);
+
       myproc()->runtime = 0;
     }
     // L2 Queue Timeout
@@ -148,6 +154,7 @@ trap(struct trapframe *tf)
         --myproc()->priority;
 
       myproc()->runtime = 0;
+      printList();
     }
 
     yield();

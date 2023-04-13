@@ -388,29 +388,10 @@ scheduler(void)
         }
       }
     }
-    // If not, the scheduler works.
+    // If not, scheduler works.
     else{
       // Level of queue that the scheduler is processing.
-      int qlevel;
-
-      for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-        // Check if there is a RUNNABLE process in the L0 queue.
-        if(p->state == RUNNABLE && p->queue == L0){
-          qlevel = L0;
-          break;
-        }
-        // Check if there is a RUNNABLE process in the L1 queue.
-        else if(p->queue == L1 && p->state == RUNNABLE){
-          qlevel = L1;
-          break;
-        }
-        // Check if there is a RUNNABLE process in the L2 queue.
-        else if(p->queue == L2 && p->state == RUNNABLE){
-          qlevel = L2;
-          break;
-        }
-        qlevel = L0;
-      }
+      int qlevel = getqueuelev();
 
       // L0, L1 : Round-Robin
       if(qlevel == L0 || qlevel == L1){
@@ -421,6 +402,11 @@ scheduler(void)
           queue = L1_queue;
 
         for(p = queue->next; p != 0; p = p->next){
+          // If there a process in L0 queue when qlevel is L1,
+          // break for loop to schedule L0 queue.
+          if(qlevel == L1 && qlevel != getqueuelev())
+            break;
+
           if(p->state != RUNNABLE || p->monopoly != 0)
             continue;
 
@@ -553,6 +539,35 @@ setPriority(int pid, int priority)
   }
   
   release(&ptable.lock);
+}
+
+// Get a level of queue that scheduler is going to deal with.
+int
+getqueuelev(void)
+{
+  int qlevel; // Level of queue that the scheduler is processing.
+
+  for(struct proc* p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    // Check if there is a RUNNABLE process in the L0 queue.
+    if(p->state == RUNNABLE && p->queue == L0){
+      qlevel = L0;
+      break;
+    }
+    // Check if there is a RUNNABLE process in the L1 queue.
+    else if(p->queue == L1 && p->state == RUNNABLE){
+      qlevel = L1;
+      break;
+    }
+    // Check if there is a RUNNABLE process in the L2 queue.
+    else if(p->queue == L2 && p->state == RUNNABLE){
+      qlevel = L2;
+      break;
+    }
+
+    qlevel = L0;
+  }
+  
+  return qlevel;
 }
 
 // Priority Boosting
