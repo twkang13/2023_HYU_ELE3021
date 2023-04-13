@@ -12,6 +12,7 @@ int main(int argc, char* argv[]){
     int password = atoi(argv[3]);
     setPriority(pid, priority); // for a test : setPriority
     schedulerLock(password);
+    schedulerUnlock(password);
 
     printf(1, "level : %d\n", getLevel()); // for a test : getLevel
     yield(); // for a test : yield

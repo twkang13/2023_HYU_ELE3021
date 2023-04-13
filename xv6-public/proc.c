@@ -22,6 +22,7 @@ struct proc L2_header; // L2 Queue;
 struct proc *L2_queue = &L2_header;
 
 int schlock;
+struct proc *proc_lock;
 
 static struct proc *initproc;
 
@@ -283,6 +284,9 @@ exit(void)
   else if(curproc->queue == L2)
     deleteList(curproc, L2_queue);
 
+  // Indicates that scheduler is not locked.
+  schlock = 0;
+
   acquire(&ptable.lock);
 
   // Parent might be sleeping in wait().
@@ -366,14 +370,12 @@ scheduler(void)
     // Enable interrupts on this processor.
     sti();
 
-    // Loop over process table looking for process to run.
     acquire(&ptable.lock);
 
     // If the process lock the scheduler, deal with the process first.
-    if(schlock){ 
+    if(schlock){
       for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
         if(p->monopoly == 1 && p->state == RUNNABLE){
-          cprintf("pid '%d' : monopoly\n"); // 머가 이상한데,, pid 다른 애가 일로 들어감. schedulerUnlock 확인
           c->proc = p;
           switchuvm(p);
           p->state = RUNNING;
@@ -484,11 +486,11 @@ scheduler(void)
           }
         }
         else
-          panic("L2_queue is empty.\n");
+          panic("L2_queue is empty.\n"); // 이것도 이상함
       }
-
-      release(&ptable.lock);
     }
+
+    release(&ptable.lock);
   }
 }
 
@@ -600,8 +602,6 @@ schedulerLock(int password)
   acquire(&ptable.lock);
   struct proc *p = myproc();
 
-  cprintf("pid '%d' : Scheduler Lock\n", myproc()->pid);
-
   // Check if the current process is in the list of existing processes.
   int lockable = 0;
   for(struct proc* tmp = ptable.proc; tmp < &ptable.proc[NPROC]; tmp++){
@@ -621,6 +621,9 @@ schedulerLock(int password)
     p->monopoly = 1;
     ticks = 0;
     schlock = 1;
+
+    cprintf("pid '%d' : Scheduler Lock\n", myproc()->pid);
+    proc_lock = p;
     
     release(&ptable.lock);
   }
