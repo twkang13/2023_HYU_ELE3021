@@ -285,7 +285,11 @@ exit(void)
     deleteList(curproc, L2_queue);
 
   // Indicates that scheduler is not locked.
-  schlock = 0;
+  if(schlock)
+    schlock = 0;
+
+  if(proc_lock)
+    proc_lock = 0;
 
   acquire(&ptable.lock);
 
@@ -374,18 +378,17 @@ scheduler(void)
 
     // If the process lock the scheduler, deal with the process first.
     if(schlock){
-      for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-        if(p->monopoly == 1 && p->state == RUNNABLE){
-          c->proc = p;
-          switchuvm(p);
-          p->state = RUNNING;
+      if(proc_lock->monopoly == 1 && proc_lock->state == RUNNABLE){
+        p = proc_lock;
 
-          swtch(&(c->scheduler), p->context);
-          switchkvm();
+        c->proc = p;
+        switchuvm(p);
+        p->state = RUNNING;
 
-          c->proc = 0;
-          break;
-        }
+        swtch(&(c->scheduler), p->context);
+        switchkvm();
+
+        c->proc = 0;
       }
     }
     // If not, scheduler works.
@@ -402,13 +405,6 @@ scheduler(void)
           queue = L1_queue;
 
         for(p = queue->next; p != 0; p = p->next){
-          // If there a process in L0 queue when qlevel is L1,
-          // break for loop to schedule L0 queue.
-          if(qlevel == L1 && qlevel != getQueueLev()){
-            cprintf("pid '%d' : Rescheduling.\n", p->pid);
-            break;
-          }
-
           if(p->state != RUNNABLE || p->monopoly != 0)
             continue;
 
@@ -584,13 +580,13 @@ boosting(void)
   acquire(&ptable.lock);
 
   // Initializing processes in L0 queue
-  for(struct proc* p = L0_queue->next; p != 0; p = p->next){
+  for(struct proc* p = L0_queue->next; p != 0 && p->state == RUNNABLE; p = p->next){
     p->queue = L0;
     p->priority = 3;
     p->runtime = 0;
   }
   // Initializing processes in L1 queue
-  for(struct proc* p = L1_queue->next; p != 0; p = p->next){
+  for(struct proc* p = L1_queue->next; p != 0 && p->state == RUNNABLE; p = p->next){
     p->queue = L0;
     p->priority = 3;
     p->runtime = 0;
@@ -599,7 +595,7 @@ boosting(void)
     addListEnd(p, L0_queue);
   }
   // Initialzing processes in L2 queue
-  for(struct proc* p = L2_queue->next; p != 0; p = p->next){
+  for(struct proc* p = L2_queue->next; p != 0 && p->state == RUNNABLE; p = p->next){
     p->queue = L0;
     p->priority = 3;
     p->runtime = 0;
@@ -615,8 +611,10 @@ boosting(void)
 // If password matches, Indicate that the current process monopolizes the scheduler.
 // If not, print an error message ans exits the current process.
 void
-schedulerLock(int password)
+schedulerLock(int password) // TODO : schedulerLock의 Wrapper function에서 'Password : (입력)'식으로 함수 만들기
 {
+  acquire(&ptable.lock);
+
   struct proc *p = myproc();
 
   // Check if the current process is in the list of existing processes.
@@ -641,12 +639,14 @@ schedulerLock(int password)
 
     cprintf("pid '%d' : Scheduler Lock\n", myproc()->pid);
     proc_lock = p;
+    release(&ptable.lock);
   }
   // If not
   else {
     cprintf("ERROR : Wrong Password\n");
     cprintf("pid : %d\ttime quantum : %d\tqueue level : %d\n", p->pid, p->runtime, p->queue);
     cprintf("Exit the current process.\n");
+    release(&ptable.lock);
     exit();
   }
 }
@@ -657,6 +657,8 @@ schedulerLock(int password)
 void
 schedulerUnlock(int password)
 {
+  acquire(&ptable.lock);
+
   struct proc *p = myproc();
 
   if(password == 2021025205){
@@ -676,6 +678,7 @@ schedulerUnlock(int password)
     addListFront(p, L0_queue);
 
     schlock = 0;
+    proc_lock = 0;
     release(&ptable.lock);
   }
   else{
@@ -754,8 +757,9 @@ wakeup1(void *chan)
   struct proc *p;
 
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
-    if(p->state == SLEEPING && p->chan == chan)
+    if(p->state == SLEEPING && p->chan == chan){
       p->state = RUNNABLE;
+    }
 }
 
 // Wake up all processes sleeping on chan.

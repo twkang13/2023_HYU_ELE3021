@@ -137,6 +137,7 @@ static int (*syscalls[])(void) = {
 [SYS_getLevel]  sys_getLevel,
 [SYS_setPriority] sys_setPriority,
 [SYS_schedulerLock] sys_schedulerLock,
+[SYS_schedulerUnlock] sys_schedulerUnlock,
 };
 
 void
