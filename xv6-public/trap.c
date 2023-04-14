@@ -131,8 +131,10 @@ trap(struct trapframe *tf)
       deleteList(myproc(), myqueue(L0));
       addListEnd(myproc(), myqueue(L1));
 
+      /*
       printList();
       cprintf("pid '%d' : L0->L1\n", myproc()->pid);
+      */
 
       myproc()->runtime = 0;
     }
@@ -143,8 +145,10 @@ trap(struct trapframe *tf)
       deleteList(myproc(), myqueue(L1));
       addListEnd(myproc(), myqueue(L2));
 
+      /*
       printList();
       cprintf("pid '%d' : L1->L2\n", myproc()->pid);
+      */
 
       myproc()->runtime = 0;
     }
@@ -154,7 +158,7 @@ trap(struct trapframe *tf)
         --myproc()->priority;
 
       myproc()->runtime = 0;
-      printList();
+      //printList();
     }
 
     yield();

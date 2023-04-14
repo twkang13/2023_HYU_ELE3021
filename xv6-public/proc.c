@@ -291,12 +291,7 @@ exit(void)
   curproc->cwd = 0;
 
   // Delete current process from its queue when it terminates.
-  if(curproc->queue == L0)
-    deleteList(curproc, L0_queue);
-  else if(curproc->queue == L1)
-    deleteList(curproc, L1_queue);
-  else if(curproc->queue == L2)
-    deleteList(curproc, L2_queue);
+  deleteList(curproc, myqueue(curproc->queue));
 
   // Indicates that scheduler is not locked.
   if(schlock)
@@ -487,9 +482,9 @@ scheduler(void)
           }
         }
         else{
-          cprintf("queue is empty.\n"); // 이것도 이상함,, L2에 있는 process가 종료된 다음에 queue가 비었을 때 왜 이게 무한 반복되는거지
-          release(&ptable.lock);
-          continue;
+          //cprintf("queue is empty.\n"); // 이것도 이상함,, L2에 있는 process가 종료된 다음에 queue가 비었을 때 왜 이게 무한 반복되는거지
+          // scheduler가 할 일이 없으면 문제 발생하는듯,,
+          wait();
         }
       }
     }
@@ -543,7 +538,7 @@ getLevel(void)
 }
 
 // Set priority of the process 'pid'
-void
+int
 setPriority(int pid, int priority)
 {  
   acquire(&ptable.lock);
@@ -552,11 +547,13 @@ setPriority(int pid, int priority)
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     if(p->pid == pid){
       p->priority = priority;
-      break;
+      release(&ptable.lock);
+      return p->pid;
     }
   }
   
   release(&ptable.lock);
+  return -1;
 }
 
 // Get a level of queue that scheduler is going to deal with.
@@ -659,7 +656,6 @@ schedulerLock(int password) // TODO : schedulerLock의 Wrapper function에서 'P
   else {
     cprintf("ERROR : Wrong Password\n");
     cprintf("pid : %d\ttime quantum : %d\tqueue level : %d\n", p->pid, p->runtime, p->queue);
-    cprintf("Exit the current process.\n");
     release(&ptable.lock);
     exit();
   }
@@ -681,12 +677,7 @@ schedulerUnlock(int password)
     p->priority = 3;
 
     // Delete priority process from a queue.
-    if(p->queue == L0)
-      deleteList(p, L0_queue);
-    else if(p->queue == L1)
-      deleteList(p, L1_queue);
-    else if(p->queue == L2)
-      deleteList(p, L2_queue);
+    deleteList(p, myqueue(p->queue));
 
     // Insert priority process to L0_queue.
     addListFront(p, L0_queue);
