@@ -56,10 +56,6 @@ struct proc {
   char name[16];               // Process name (debugging)
 };
 
-extern struct proc *L0_queue;  // L0_queue
-extern struct proc *L1_queue;  // L1_queue
-extern struct proc *L2_queue;  // L2_queue
-
 extern int schlock;
 
 // Process memory is laid out contiguously, low addresses first:

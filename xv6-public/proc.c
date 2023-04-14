@@ -77,6 +77,22 @@ myproc(void) {
   return p;
 }
 
+// Disable interrupts so that we are not rescheduled
+// while reading queue
+struct proc*
+myqueue(int qlevel) {
+  struct proc *q = 0;
+  pushcli();
+  if(qlevel == L0)
+    q = L0_queue;
+  else if(qlevel == L1)
+    q = L1_queue;
+  else if(qlevel == L2)
+    q = L2_queue;
+  popcli();
+  return q;
+}
+
 //PAGEBREAK: 32
 // Look in the process table for an UNUSED proc.
 // If found, change state to EMBRYO and initialize
@@ -146,11 +162,9 @@ userinit(void)
   p = allocproc();
   
   // Initializing queues
-  L0_queue->next = 0;
+  L0_queue->next = p;
   L1_queue->next = 0;
   L2_queue->next = 0;
-
-  L0_queue->next = p;
 
   schlock = 0;
 

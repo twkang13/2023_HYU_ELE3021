@@ -66,15 +66,15 @@ void
 printList(void)
 {
     cprintf("L0 : ");
-    for(struct proc* temp = L0_queue->next; temp != 0; temp = temp->next){
+    for(struct proc* temp = myqueue(L0)->next; temp != 0; temp = temp->next){
         cprintf("%d ", temp->pid);
     }
     cprintf("\nL1 : ");
-    for(struct proc* temp = L1_queue->next; temp != 0; temp = temp->next){
+    for(struct proc* temp = myqueue(L1)->next; temp != 0; temp = temp->next){
         cprintf("%d ", temp->pid);
     }
     cprintf("\nL2 : ");
-    for(struct proc* temp = L2_queue->next; temp != 0; temp = temp->next){
+    for(struct proc* temp = myqueue(L2)->next; temp != 0; temp = temp->next){
         cprintf("%d ", temp->pid);
     }
     cprintf("\n");

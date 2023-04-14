@@ -128,8 +128,8 @@ trap(struct trapframe *tf)
     if(myproc()->runtime >= 4 && myproc()->queue == L0 && myproc()->monopoly == 0){
       myproc()->queue = L1; // Move the current process to the L1 queue.
 
-      deleteList(myproc(), L0_queue);
-      addListEnd(myproc(), L1_queue);
+      deleteList(myproc(), myqueue(L0));
+      addListEnd(myproc(), myqueue(L1));
 
       printList();
       cprintf("pid '%d' : L0->L1\n", myproc()->pid);
@@ -140,8 +140,8 @@ trap(struct trapframe *tf)
     if(myproc()->runtime >= 6 && myproc()->queue == L1 && myproc()->monopoly == 0){
       myproc()->queue = L2; // Move the current process to the L2 queue.
 
-      deleteList(myproc(), L1_queue);
-      addListEnd(myproc(), L2_queue);
+      deleteList(myproc(), myqueue(L1));
+      addListEnd(myproc(), myqueue(L2));
 
       printList();
       cprintf("pid '%d' : L1->L2\n", myproc()->pid);
