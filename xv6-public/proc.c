@@ -395,6 +395,8 @@ scheduler(void)
     // If the process lock the scheduler, deal with the process first.
     if(schlock){
       if(proc_lock->monopoly == 1 && proc_lock->state == RUNNABLE){
+        // Sleep 후 schlock, proc_lock에 대한 경우도 처리 필요 
+        cprintf("pid '%d' : Scheduler Lock.\n", proc_lock->pid);
         p = proc_lock;
 
         c->proc = p;
@@ -546,16 +548,26 @@ getLevel(void)
 }
 
 // Set priority of the process 'pid'
+// If user enter invalid pid or priority, print error message then change nothing.
 void
 setPriority(int pid, int priority)
 {  
   struct proc *p;
 
+  if(priority < 0 || priority > 3)
+    cprintf("ERROR : Invalid priority.\n");
+
+  int valid = 0;
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     if(p->pid == pid){
       p->priority = priority;
+      valid = 1;
+      break;
     }
   }
+
+  if(!valid)
+    cprintf("ERROR : Invalid pid.\n");
 }
 
 // Get a level of queue that scheduler is going to deal with.
@@ -624,11 +636,17 @@ boosting(void)
 // If password matches, Indicate that the current process monopolizes the scheduler.
 // If not, print an error message ans exits the current process.
 void
-schedulerLock(int password) // TODO : schedulerLock의 Wrapper function에서 'Password : (입력)'식으로 함수 만들기
+schedulerLock(int password)
 {
-  acquire(&ptable.lock);
-
   struct proc *p = myproc();
+
+  // If the scheduler is alreay locked.
+  if(schlock){
+    cprintf("FAIL : Scheduler is already locked.\n");
+    exit();
+  }
+
+  acquire(&ptable.lock);
 
   // Check if the current process is in the list of existing processes.
   int lockable = 0;
@@ -642,8 +660,8 @@ schedulerLock(int password) // TODO : schedulerLock의 Wrapper function에서 'P
     cprintf("ERROR : current process does not exists in the ptable.\n");
     cprintf("        Failed to lock the scheduler.\n");
     
-    exit();
     release(&ptable.lock);
+    exit();
   }
 
   // If password matches
@@ -676,11 +694,17 @@ schedulerLock(int password) // TODO : schedulerLock의 Wrapper function에서 'P
 void
 schedulerUnlock(int password)
 {
-  acquire(&ptable.lock);
-
   struct proc *p = myproc();
 
+  // Check if the scheduler is locked.
+  if(schlock == 0){
+    cprintf("ERROR : Scheduler is already unlocked.\n");
+    exit();
+  }
+
   if(password == 2021025205){
+    acquire(&ptable.lock);
+
     p->monopoly = 0;
     p->runtime = 0;
     p->priority = 3;
@@ -693,12 +717,12 @@ schedulerUnlock(int password)
 
     cprintf("pid '%d' : Scheduler Unlocked\n", myproc()->pid);
     release(&ptable.lock);
+
+    yield();
   }
   else{
     cprintf("ERROR : Wrong Password\n");
     cprintf("pid : %d\ttime quantum : %d\tqueue level : %d\n", p->pid, p->runtime, p->queue);
-
-    release(&ptable.lock);
     exit();
   }
 }
