@@ -414,6 +414,11 @@ scheduler(void)
           queue = L1_queue;
 
         for(p = queue->next; p != 0; p = p->next){
+          // When scheduler is processing L1 queue and if there is a process in L0 queue,
+          // Schedule L0 queue first.
+          if(qlevel == L1 && qlevel != getQueueLev())
+            break;
+
           if(p->state != RUNNABLE || p->monopoly != 0)
             continue;
 
@@ -436,25 +441,25 @@ scheduler(void)
       if(qlevel == L2){
         struct proc *finalproc = 0;
 
-        // Find the process that its priority is 0.
+        // Find process that its priority is 0.
         for(p = L2_queue->next; p != 0; p = p->next){
           if(p->state == RUNNABLE && p->priority == 0 && p->monopoly == 0){
             finalproc = p;
           }
         }
-        // Find the process that its priority is 1.
+        // Find process that its priority is 1.
         if(finalproc == 0)
           for(p = L2_queue->next; p != 0; p = p->next){
             if(p->state == RUNNABLE && p->priority == 1 && p->monopoly == 0)
               finalproc = p;
           }
-        // Find the process that its priority is 2.
+        // Find process that its priority is 2.
         if(finalproc == 0)
           for(p = L2_queue->next; p != 0; p = p->next){
             if(p->state == RUNNABLE && p->priority == 2 && p->monopoly == 0)
               finalproc = p;
           }
-        // Find the process that its priority is 3.
+        // Find process that its priority is 3.
         if(finalproc == 0)
           for(p = L2_queue->next; p != 0; p = p->next){
             if(p->state == RUNNABLE && p->priority == 3 && p->monopoly == 0){
@@ -467,7 +472,7 @@ scheduler(void)
           // If the scheduler is locked.
           if(finalproc->monopoly != 0)
             cprintf("ERROR : Current process(pid : '%d') already locked the scheduler.\n", finalproc->pid);
-          // If the scheduler is unlocked.
+          // If scheduler is unlocked.
           else{
             c->proc = finalproc;
             switchuvm(finalproc);
