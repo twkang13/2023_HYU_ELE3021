@@ -191,7 +191,7 @@ userinit(void)
 
   p->queue = L0; // Set new process's queue level to 0.
   p->next = 0; // Initialize next process
-  addListFront(p, L0_queue);
+  addListEnd(p, L0_queue);
 
   release(&ptable.lock);
 }
@@ -261,7 +261,7 @@ fork(void)
 
   np->queue = L0; // Set new process's queue level to 0.
   np->next = 0; // Initialize next process
-  addListFront(np, L0_queue);
+  addListEnd(np, L0_queue);
 
   release(&ptable.lock);
 
@@ -493,11 +493,7 @@ scheduler(void)
             c->proc = 0;
           }
         }
-        else{
-          //cprintf("queue is empty.\n"); // 이것도 이상함,, L2에 있는 process가 종료된 다음에 queue가 비었을 때 왜 이게 무한 반복되는거지
-          // scheduler가 할 일이 없으면 문제 발생하는듯,,
-          wait();
-        }
+        // TODO : Scheduler가 처리할 process가 없을 경우에 대한 처리
       }
     }
 
@@ -695,6 +691,7 @@ schedulerUnlock(int password)
     schlock = 0;
     proc_lock = 0;
 
+    cprintf("pid '%d' : Scheduler Unlocked\n", myproc()->pid);
     release(&ptable.lock);
   }
   else{
