@@ -44,19 +44,20 @@ isLast(struct proc* proc, struct proc* queue)
 int
 deleteList(struct proc* proc, struct proc* queue)
 {
+    // If queue does not exists, terminates funcrtion.
+    if(!queue)
+        return -1;
+
     struct proc* prev = queue;
 
     while(prev->next != 0 && prev->next != proc)
         prev = prev->next;
 
-    if(isLast(prev, queue)){
-        cprintf("ERROR : process with id '%d' is not in a queue '%d'\n", proc->pid, proc->queue);
-        return 0;
+    if(!isLast(prev, queue)){
+        struct proc* tmp = prev->next;
+        prev->next = tmp->next;
+        proc->next = 0;
     }
-    
-    struct proc* tmp = prev->next;
-    prev->next = tmp->next;
-    proc->next = 0;
 
     return 0;
 }

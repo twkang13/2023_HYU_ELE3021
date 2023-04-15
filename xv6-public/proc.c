@@ -117,10 +117,6 @@ found:
   p->state = EMBRYO;
   p->pid = nextpid++;
 
-  p->queue = L0; // Set new process's queue level to 0.
-  p->next = 0; // Initialize next process
-  addListFront(p, L0_queue);
-
   p->priority = 3; // Set new process's priority to 3.
   p->runtime = 0; // Set new process's runtime to 0.
   p->monopoly = 0; // Set new process's monopoly to 0. ('0' indicates that the process does not monoploize the scheduler.)
@@ -162,7 +158,7 @@ userinit(void)
   p = allocproc();
   
   // Initializing queues
-  L0_queue->next = p;
+  L0_queue->next = 0;
   L1_queue->next = 0;
   L2_queue->next = 0;
 
@@ -192,6 +188,10 @@ userinit(void)
   acquire(&ptable.lock);
 
   p->state = RUNNABLE;
+
+  p->queue = L0; // Set new process's queue level to 0.
+  p->next = 0; // Initialize next process
+  addListFront(p, L0_queue);
 
   release(&ptable.lock);
 }
@@ -258,6 +258,10 @@ fork(void)
   acquire(&ptable.lock);
 
   np->state = RUNNABLE;
+
+  np->queue = L0; // Set new process's queue level to 0.
+  np->next = 0; // Initialize next process
+  addListFront(np, L0_queue);
 
   release(&ptable.lock);
 
@@ -348,6 +352,9 @@ wait(void)
         p->name[0] = 0;
         p->killed = 0;
         p->state = UNUSED;
+        // Delete current process from the queue if process is a memeber of queue.
+        if(deleteList(p, myqueue(p->queue)) != -1)
+          p->queue = L0;
         release(&ptable.lock);
         return pid;
       }
@@ -751,6 +758,9 @@ sleep(void *chan, struct spinlock *lk)
   // Go to sleep.
   p->chan = chan;
   p->state = SLEEPING;
+  // Delete current process from the queue if process is a memeber of queue.
+  if(deleteList(p, myqueue(p->queue)) != -1)
+    p->queue = L0;
 
   sched();
 
@@ -775,6 +785,9 @@ wakeup1(void *chan)
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
     if(p->state == SLEEPING && p->chan == chan){
       p->state = RUNNABLE;
+      // Insert all SLEEPING processes to L0 queue.
+      p->queue = L0;
+      addListEnd(p, L0_queue);
     }
 }
 
@@ -800,8 +813,12 @@ kill(int pid)
     if(p->pid == pid){
       p->killed = 1;
       // Wake process from sleep if necessary.
-      if(p->state == SLEEPING)
+      if(p->state == SLEEPING){
         p->state = RUNNABLE;
+        // Insert all SLEEPING processes to L0 queue.
+        p->queue = L0;
+        addListEnd(p, L0_queue);
+      }
       release(&ptable.lock);
       return 0;
     }
