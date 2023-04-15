@@ -123,7 +123,7 @@ int             wait(void);
 void            wakeup(void*);
 void            yield(void);
 int             getLevel(void);
-int             setPriority(int,int);
+void            setPriority(int,int);
 void            boosting(void);
 void            schedulerLock(int);
 void            schedulerUnlock(int);

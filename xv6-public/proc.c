@@ -550,22 +550,16 @@ getLevel(void)
 }
 
 // Set priority of the process 'pid'
-int
+void
 setPriority(int pid, int priority)
 {  
-  acquire(&ptable.lock);
   struct proc *p;
 
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     if(p->pid == pid){
       p->priority = priority;
-      release(&ptable.lock);
-      return p->pid;
     }
   }
-  
-  release(&ptable.lock);
-  return -1;
 }
 
 // Get a level of queue that scheduler is going to deal with.
@@ -662,8 +656,11 @@ schedulerLock(int password) // TODO : schedulerLock의 Wrapper function에서 'P
     ticks = 0;
     schlock = 1;
 
-    cprintf("pid '%d' : Scheduler Lock\n", myproc()->pid);
+    cprintf("pid '%d' : Scheduler Locked\n", myproc()->pid);
     proc_lock = p;
+
+    // Delete priority process from a queue.
+    deleteList(p, myqueue(p->queue));
 
     release(&ptable.lock);
   }
@@ -692,8 +689,6 @@ schedulerUnlock(int password)
     p->runtime = 0;
     p->priority = 3;
 
-    // Delete priority process from a queue.
-    deleteList(p, myqueue(p->queue));
     // Insert priority process to L0_queue.
     addListFront(p, L0_queue);
 
