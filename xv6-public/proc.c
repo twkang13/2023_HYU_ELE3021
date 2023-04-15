@@ -639,7 +639,9 @@ schedulerLock(int password) // TODO : schedulerLock의 Wrapper function에서 'P
   if(!lockable){
     cprintf("ERROR : current process does not exists in the ptable.\n");
     cprintf("        Failed to lock the scheduler.\n");
+    
     exit();
+    release(&ptable.lock);
   }
 
   // If password matches
@@ -650,12 +652,14 @@ schedulerLock(int password) // TODO : schedulerLock의 Wrapper function에서 'P
 
     cprintf("pid '%d' : Scheduler Lock\n", myproc()->pid);
     proc_lock = p;
+
     release(&ptable.lock);
   }
   // If not
   else {
     cprintf("ERROR : Wrong Password\n");
     cprintf("pid : %d\ttime quantum : %d\tqueue level : %d\n", p->pid, p->runtime, p->queue);
+    
     release(&ptable.lock);
     exit();
   }
@@ -678,17 +682,19 @@ schedulerUnlock(int password)
 
     // Delete priority process from a queue.
     deleteList(p, myqueue(p->queue));
-
     // Insert priority process to L0_queue.
     addListFront(p, L0_queue);
 
     schlock = 0;
     proc_lock = 0;
+
     release(&ptable.lock);
   }
   else{
     cprintf("ERROR : Wrong Password\n");
     cprintf("pid : %d\ttime quantum : %d\tqueue level : %d\n", p->pid, p->runtime, p->queue);
+
+    release(&ptable.lock);
     exit();
   }
 }
