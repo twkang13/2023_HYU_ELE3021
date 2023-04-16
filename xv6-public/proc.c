@@ -117,10 +117,6 @@ found:
   p->state = EMBRYO;
   p->pid = nextpid++;
 
-  p->priority = 3; // Set new process's priority to 3.
-  p->runtime = 0; // Set new process's runtime to 0.
-  p->monopoly = 0; // Set new process's monopoly to 0. ('0' indicates that the process does not monoploize the scheduler.)
-
   release(&ptable.lock);
 
   // Allocate kernel stack.
@@ -188,6 +184,10 @@ userinit(void)
   acquire(&ptable.lock);
 
   p->state = RUNNABLE;
+
+  p->priority = 3; // Set new process's priority to 3.
+  p->runtime = 0; // Set new process's runtime to 0.
+  p->monopoly = 0; // Set new process's monopoly to 0. ('0' indicates that the process does not monoploize the scheduler.)
 
   p->queue = L0; // Set new process's queue level to 0.
   p->next = 0; // Initialize next process
@@ -258,6 +258,10 @@ fork(void)
   acquire(&ptable.lock);
 
   np->state = RUNNABLE;
+
+  np->priority = 3; // Set new process's priority to 3.
+  np->runtime = 0; // Set new process's runtime to 0.
+  np->monopoly = 0; // Set new process's monopoly to 0. ('0' indicates that the process does not monoploize the scheduler.)
 
   np->queue = L0; // Set new process's queue level to 0.
   np->next = 0; // Initialize next process
@@ -402,6 +406,7 @@ scheduler(void)
         c->proc = p;
         switchuvm(p);
         p->state = RUNNING;
+        deleteList(p, myqueue(p->queue));
 
         swtch(&(c->scheduler), p->context);
         switchkvm();
@@ -413,8 +418,13 @@ scheduler(void)
     else{
       // Level of queue that the scheduler is processing.
       int qlevel = getQueueLev();
+      if(qlevel < 0){
+        release(&ptable.lock);
+        continue;
+      }
 
       // L0, L1 : Round-Robin
+      // TODO : Queue의 첫 Process를 처리하도록 변경
       if(qlevel == L0 || qlevel == L1){
         struct proc* queue = 0;
         if(qlevel == L0)
@@ -425,8 +435,10 @@ scheduler(void)
         for(p = queue->next; p != 0; p = p->next){
           // When scheduler is processing L1 queue and if there is a process in L0 queue,
           // Schedule L0 queue first.
-          if(qlevel == L1 && qlevel != getQueueLev())
+          if(qlevel == L1 && qlevel != getQueueLev()){
+            cprintf("CHANGE : %d -> %d\n", qlevel, getQueueLev());
             break;
+          }
 
           if(p->state != RUNNABLE || p->monopoly != 0)
             continue;
@@ -437,6 +449,7 @@ scheduler(void)
           c->proc = p;
           switchuvm(p);
           p->state = RUNNING;
+          deleteList(p, myqueue(p->queue));
 
           swtch(&(c->scheduler), p->context);
           switchkvm();
@@ -447,6 +460,7 @@ scheduler(void)
         }
       }
       // L2 Queue : Priority Scheduling
+      // TODO : Priority별로 queue 돈 다음에 같은 priority 중에서 가장 pid가 작은 process 찾도록 변경
       if(qlevel == L2){
         struct proc *finalproc = 0;
 
@@ -479,13 +493,14 @@ scheduler(void)
         // Switch to chosen process.
         if(finalproc != 0){
           // If the scheduler is locked.
-          if(finalproc->monopoly != 0)
+          if(finalproc->monopoly)
             cprintf("ERROR : Current process(pid : '%d') already locked the scheduler.\n", finalproc->pid);
           // If scheduler is unlocked.
           else{
             c->proc = finalproc;
             switchuvm(finalproc);
             finalproc->state = RUNNING;
+            deleteList(finalproc, myqueue(finalproc->queue));
 
             swtch(&(c->scheduler), finalproc->context);
             switchkvm();
@@ -495,10 +510,8 @@ scheduler(void)
             c->proc = 0;
           }
         }
-        // TODO : Scheduler가 처리할 process가 없을 경우에 대한 처리
       }
     }
-
     release(&ptable.lock);
   }
 }
@@ -535,6 +548,32 @@ yield(void)
 {
   acquire(&ptable.lock);  //DOC: yieldlock
   myproc()->state = RUNNABLE;
+
+  addListEnd(myproc(), myqueue(myproc()->queue));
+
+  // Check if there is a process which spent all of time it got.
+  // L0 Queue Timeout
+  if(myproc()->runtime >= 4 && myproc()->queue == L0 && !schlock){
+    myproc()->queue = L1; // Move the current process to the L1 queue.
+    myproc()->runtime = 0;
+
+    deleteList(myproc(), myqueue(L0));
+    addListEnd(myproc(), myqueue(L1));
+  }
+  // L1 Queue Timeout
+  if(myproc()->runtime >= 6 && myproc()->queue == L1 && !schlock){
+    myproc()->queue = L2; // Move the current process to the L2 queue.
+    myproc()->runtime = 0;
+
+    deleteList(myproc(), myqueue(L1));
+    addListEnd(myproc(), myqueue(L2));
+    }
+  // L2 Queue Timeout
+  if(myproc()->runtime >= 8 && myproc()->queue == L2 && !schlock){
+    if(myproc()->priority > 0)
+      --myproc()->priority;
+    myproc()->runtime = 0;
+  }
 
   sched();
   release(&ptable.lock);
@@ -574,26 +613,18 @@ setPriority(int pid, int priority)
 int
 getQueueLev(void)
 {
-  int qlevel = L0; // Level of queue that the scheduler is processing.
+  int qlevel = -1; // Level of queue that the scheduler is processing.
 
-  for(struct proc* p = ptable.proc; p < &ptable.proc[NPROC] && p->monopoly == 0; p++){
-    // Check if there is a RUNNABLE process in the L0 queue.
-    if(p->state == RUNNABLE && p->queue == L0){
-      qlevel = L0;
-      break;
-    }
-    // Check if there is a RUNNABLE process in the L1 queue.
-    else if(p->queue == L1 && p->state == RUNNABLE){
-      qlevel = L1;
-      break;
-    }
-    // Check if there is a RUNNABLE process in the L2 queue.
-    else if(p->queue == L2 && p->state == RUNNABLE){
-      qlevel = L2;
-      break;
-    }
-  }
-  
+  // Check if there is a RUNNABLE process in the L0 queue.
+  if(L0_queue->next)
+    qlevel = L0;
+  // Check if there is a RUNNABLE process in the L1 queue.
+  else if(L1_queue->next)
+    qlevel = L1;
+  // Check if there is a RUNNABLE process in the L2 queue.
+  else if(L2_queue->next)
+    qlevel = L2;
+
   return qlevel;
 }
 
@@ -604,14 +635,16 @@ boosting(void)
 {
   acquire(&ptable.lock);
 
+  cprintf("\n");
+  printList();
   // Initializing processes in L0 queue
-  for(struct proc* p = L0_queue->next; p != 0 && p->state == RUNNABLE; p = p->next){
+  for(struct proc* p = L0_queue->next; p != 0; p = p->next){
     p->queue = L0;
     p->priority = 3;
     p->runtime = 0;
   }
   // Initializing processes in L1 queue
-  for(struct proc* p = L1_queue->next; p != 0 && p->state == RUNNABLE; p = p->next){
+  for(struct proc* p = L1_queue->next; p != 0; p = p->next){
     p->queue = L0;
     p->priority = 3;
     p->runtime = 0;
@@ -620,7 +653,7 @@ boosting(void)
     addListEnd(p, L0_queue);
   }
   // Initialzing processes in L2 queue
-  for(struct proc* p = L2_queue->next; p != 0 && p->state == RUNNABLE; p = p->next){
+  for(struct proc* p = L2_queue->next; p != 0; p = p->next){
     p->queue = L0;
     p->priority = 3;
     p->runtime = 0;
@@ -629,6 +662,8 @@ boosting(void)
     addListEnd(p, L0_queue);
   }
   ticks = 0; // Initialize Global ticks
+  printList();
+  cprintf("\n");
 
   release(&ptable.lock);
 }

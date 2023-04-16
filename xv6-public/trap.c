@@ -56,10 +56,8 @@ trap(struct trapframe *tf)
       ticks++;
 
       // Increment a runtime
-      if(myproc() && myproc()->state==RUNNING){
+      if(myproc() && myproc()->state==RUNNING)
         ++myproc()->runtime;
-        //cprintf("pid '%d' : runtime - %d\n", myproc()->pid, myproc()->runtime);
-      }
       
       wakeup(&ticks);
       release(&tickslock);
@@ -91,7 +89,7 @@ trap(struct trapframe *tf)
     mycall();
     break;
   case T_SCHLOCK:
-    schedulerLock(2021025205); // parameter 확인 필요
+    schedulerLock(2021025205);
     break;
   case T_SCHUNLOCK:
     schedulerUnlock(2021025205);
@@ -122,47 +120,8 @@ trap(struct trapframe *tf)
   // Force process to give up CPU on clock tick.
   // If interrupts were on while locks held, would need to check nlock.
   if(myproc() && myproc()->state == RUNNING &&
-    tf->trapno == T_IRQ0 + IRQ_TIMER){
-     // Check if there is a process which spent all of time it got.
-     // L0 Queue Timeout
-    if(myproc()->runtime >= 4 && myproc()->queue == L0 && !schlock){
-      myproc()->queue = L1; // Move the current process to the L1 queue.
-
-      deleteList(myproc(), myqueue(L0));
-      addListEnd(myproc(), myqueue(L1));
-
-      /*
-      printList();
-      cprintf("pid '%d' : L0->L1\n", myproc()->pid);
-      */
-
-      myproc()->runtime = 0;
-    }
-    // L1 Queue Timeout
-    if(myproc()->runtime >= 6 && myproc()->queue == L1 && !schlock){
-      myproc()->queue = L2; // Move the current process to the L2 queue.
-
-      deleteList(myproc(), myqueue(L1));
-      addListEnd(myproc(), myqueue(L2));
-
-      /*
-      printList();
-      cprintf("pid '%d' : L1->L2\n", myproc()->pid);
-      */
-
-      myproc()->runtime = 0;
-    }
-    // L2 Queue Timeout
-    if(myproc()->runtime >= 8 && myproc()->queue == L2 && !schlock){
-      if(myproc()->priority > 0)
-        --myproc()->priority;
-
-      myproc()->runtime = 0;
-      //printList();
-    }
-
+    tf->trapno == T_IRQ0 + IRQ_TIMER)
     yield();
-  }
 
   // Priority boosting when ticks >= 100.
   if(ticks >= 100){

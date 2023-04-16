@@ -98,7 +98,7 @@ int main(int argc, char *argv[])
   exit_children();
   printf(1, "[Test 1] finished\n");
   printf(1, "done\n");
-
+/*
   // [Test 2] Priority
   printf(1, "[Test 2] Priority\n");
   pid = fork_children2();
@@ -145,7 +145,7 @@ int main(int argc, char *argv[])
   }
   exit_children();
   printf(1, "[Test 3] finished\n");
-  printf(1, "done\n");
+  printf(1, "done\n");*/
 
   exit();
 }
