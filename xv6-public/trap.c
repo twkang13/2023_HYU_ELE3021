@@ -120,13 +120,14 @@ trap(struct trapframe *tf)
   // Force process to give up CPU on clock tick.
   // If interrupts were on while locks held, would need to check nlock.
   if(myproc() && myproc()->state == RUNNING &&
-    tf->trapno == T_IRQ0 + IRQ_TIMER)
+    tf->trapno == T_IRQ0 + IRQ_TIMER && !schlock)
     yield();
 
   // Priority boosting when ticks >= 100.
   if(ticks >= 100){
     if(schlock)
       schedulerUnlock(2021025205);
+    ticks = 0; // Initialize Global ticks
     boosting();
   }
   
