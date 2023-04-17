@@ -11,5 +11,6 @@ int main(int argc, char* argv[]){
     schedulerLock(password);
     sleep(11);
     schedulerUnlock(password);
+    sleep(20);
     exit();
 }

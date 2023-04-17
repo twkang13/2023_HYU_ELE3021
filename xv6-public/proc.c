@@ -593,6 +593,7 @@ void
 setPriority(int pid, int priority)
 {  
   struct proc *p;
+  acquire(&ptable.lock);
 
   if(priority < 0 || priority > 3)
     cprintf("ERROR : Invalid priority.\n");
@@ -608,6 +609,8 @@ setPriority(int pid, int priority)
 
   if(!valid)
     cprintf("ERROR : Invalid pid.\n");
+
+  release(&ptable.lock);
 }
 
 // Get a level of queue that scheduler is going to deal with.
@@ -618,13 +621,13 @@ getQueueLev(void)
   int qlevel = -1; // Level of queue that the scheduler is processing.
 
   // Check if there is a RUNNABLE process in the L0 queue.
-  if(L0_queue->next)
+  if(myqueue(L0)->next)
     qlevel = L0;
   // Check if there is a RUNNABLE process in the L1 queue.
-  else if(L1_queue->next)
+  else if(myqueue(L1)->next)
     qlevel = L1;
   // Check if there is a RUNNABLE process in the L2 queue.
-  else if(L2_queue->next)
+  else if(myqueue(L2)->next)
     qlevel = L2;
 
   return qlevel;
@@ -685,6 +688,7 @@ schedulerLock(int password)
     exit();
   }
 
+  acquire(&ptable.lock);
   // Check if the current process is in the list of existing processes.
   int lockable = 0;
   for(struct proc* tmp = ptable.proc; tmp < &ptable.proc[NPROC]; tmp++){
@@ -696,6 +700,7 @@ schedulerLock(int password)
   if(!lockable){
     cprintf("ERROR : current process does not exists in the ptable.\n");
     cprintf("        Failed to lock the scheduler.\n");
+    release(&ptable.lock);
     exit();
   }
 
@@ -708,11 +713,13 @@ schedulerLock(int password)
 
     // Delete process which locks a scheduler from a queue.
     deleteList(p, myqueue(p->queue));
+    release(&ptable.lock);
   }
   // If not
   else {
     cprintf("ERROR : Wrong Password\n");
     cprintf("pid : %d\ttime quantum : %d\tqueue level : %d\n", p->pid, p->runtime, p->queue);
+    release(&ptable.lock);
     exit();
   }
 }
@@ -731,6 +738,7 @@ schedulerUnlock(int password)
     exit();
   }
 
+  acquire(&ptable.lock);
   if(password == 2021025205){
     p->monopoly = 0;
     p->runtime = 0;
@@ -743,10 +751,12 @@ schedulerUnlock(int password)
 
     schlock = 0;
     proc_lock = 0;
+    release(&ptable.lock);
   }
   else{
     cprintf("ERROR : Wrong Password\n");
     cprintf("pid : %d\ttime quantum : %d\tqueue level : %d\n", p->pid, p->runtime, p->queue);
+    release(&ptable.lock);
     exit();
   }
 }
