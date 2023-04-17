@@ -450,23 +450,20 @@ scheduler(void)
         c->proc = 0;
       }
       // L2 Queue : Priority Scheduling
-      // TODO : Priority별로 queue 돈 다음에 같은 priority 중에서 가장 pid가 작은 process 찾도록 변경
-      // L2 Queue의 가장 앞 proecss의 Priority가 3이 되지 않는 문제 해결 필요 
       else if(qlevel == L2){
         struct proc *finalproc = 0;
+        
+        // Find process which its priority is 0.
         int pid = 2147483647;
-
-        // Find process that its priority is 0.
         for(p = L2_queue->next; p != 0; p = p->next){
           if(p->state == RUNNABLE && p->priority == 0 && p->monopoly == 0 && p->pid < pid){
             finalproc = p;
             pid = finalproc->pid;
           }
         }
-        // Find process that its priority is 1.
+        // Find process which its priority is 1.
         if(finalproc == 0){
           pid = 2147483647;
-
           for(p = L2_queue->next; p != 0; p = p->next){
             if(p->state == RUNNABLE && p->priority == 1 && p->monopoly == 0 && p->pid < pid){
               finalproc = p;
@@ -474,10 +471,9 @@ scheduler(void)
             }
           }
         }
-        // Find process that its priority is 2.
+        // Find process which its priority is 2.
         if(finalproc == 0){
           pid = 2147483647;
-
           for(p = L2_queue->next; p != 0; p = p->next){
             if(p->state == RUNNABLE && p->priority == 2 && p->monopoly == 0 && p->pid < pid){
               finalproc = p;
@@ -485,10 +481,9 @@ scheduler(void)
             }
           }
         }
-        // Find process that its priority is 3.
+        // Find process which its priority is 3.
         if(finalproc == 0){
           pid = 2147483647;
-
           for(p = L2_queue->next; p != 0; p = p->next){
             if(p->state == RUNNABLE && p->priority == 3 && p->monopoly == 0 && p->pid < pid){
               finalproc = p;
@@ -556,11 +551,12 @@ yield(void)
   acquire(&ptable.lock);  //DOC: yieldlock
   myproc()->state = RUNNABLE;
 
+  // Add current process to queue.
   addListEnd(myproc(), myqueue(myproc()->queue));
 
   // Check if there is a process which spent all of time it got.
   // L0 Queue Timeout
-  if(myproc()->runtime > 4 && myproc()->queue == L0 && !schlock){
+  if(myproc()->runtime >= 4 && myproc()->queue == L0 && !schlock){
     myproc()->queue = L1; // Move the current process to the L1 queue.
     myproc()->runtime = 0;
 
@@ -568,7 +564,7 @@ yield(void)
     addListEnd(myproc(), myqueue(L1));
   }
   // L1 Queue Timeout
-  if(myproc()->runtime > 6 && myproc()->queue == L1 && !schlock){
+  if(myproc()->runtime >= 6 && myproc()->queue == L1 && !schlock){
     myproc()->queue = L2; // Move the current process to the L2 queue.
     myproc()->runtime = 0;
 
@@ -576,7 +572,7 @@ yield(void)
     addListEnd(myproc(), myqueue(L2));
     }
   // L2 Queue Timeout
-  if(myproc()->runtime > 8 && myproc()->queue == L2 && !schlock){
+  if(myproc()->runtime >= 8 && myproc()->queue == L2 && !schlock){
     if(myproc()->priority > 0)
       --myproc()->priority;
     myproc()->runtime = 0;
@@ -643,6 +639,13 @@ boosting(void)
 {
   acquire(&ptable.lock);
 
+  // Initialzing RUNNING process if it exists.
+  if(myproc()){
+    myproc()->queue = L0;
+    myproc()->priority = 3;
+    myproc()->runtime = 0;
+  }
+
   // Initializing processes in L0 queue
   for(struct proc* p = L0_queue->next; p != 0; p = p->next){
     p->queue = L0;
@@ -707,7 +710,7 @@ schedulerLock(int password)
     cprintf("pid '%d' : Scheduler Locked\n", myproc()->pid);
     proc_lock = p;
 
-    // Delete priority process from a queue.
+    // Delete process which locks a scheduler from a queue.
     deleteList(p, myqueue(p->queue));
   }
   // If not
