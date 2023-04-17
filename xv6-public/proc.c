@@ -399,8 +399,6 @@ scheduler(void)
     // If the process lock the scheduler, deal with the process first.
     if(schlock){
       if(proc_lock->monopoly == 1 && proc_lock->state == RUNNABLE){
-        // Sleep 후 schlock, proc_lock에 대한 경우도 처리 필요 
-        cprintf("pid '%d' : Scheduler Lock.\n", proc_lock->pid);
         p = proc_lock;
 
         c->proc = p;
@@ -706,8 +704,6 @@ schedulerLock(int password)
     p->monopoly = 1;
     ticks = 0;
     schlock = 1;
-
-    cprintf("pid '%d' : Scheduler Locked\n", myproc()->pid);
     proc_lock = p;
 
     // Delete process which locks a scheduler from a queue.
@@ -741,13 +737,12 @@ schedulerUnlock(int password)
     p->priority = 3;
 
     // Insert priority process to L0_queue.
+    p->queue = L0;
+    p->state = RUNNABLE;
     addListFront(p, L0_queue);
 
     schlock = 0;
     proc_lock = 0;
-
-    cprintf("pid '%d' : Scheduler Unlocked\n", myproc()->pid);
-    sched();
   }
   else{
     cprintf("ERROR : Wrong Password\n");
