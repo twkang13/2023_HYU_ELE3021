@@ -491,24 +491,22 @@ scheduler(void)
         }
 
         // Switch to chosen process.
-        if(finalproc != 0){
-          // If the scheduler is locked.
-          if(finalproc->monopoly)
-            cprintf("ERROR : Current process(pid : '%d') already locked the scheduler.\n", finalproc->pid);
-          // If scheduler is unlocked.
-          else{
-            c->proc = finalproc;
-            switchuvm(finalproc);
-            finalproc->state = RUNNING;
-            deleteList(finalproc, myqueue(finalproc->queue));
+        // If the scheduler is locked.
+        if(finalproc->monopoly)
+          cprintf("ERROR : Current process(pid : '%d') already locked the scheduler.\n", finalproc->pid);
+        // If scheduler is unlocked.
+        else{
+          c->proc = finalproc;
+          switchuvm(finalproc);
+          finalproc->state = RUNNING;
+          deleteList(finalproc, myqueue(finalproc->queue));
 
-            swtch(&(c->scheduler), finalproc->context);
-            switchkvm();
+          swtch(&(c->scheduler), finalproc->context);
+          switchkvm();
 
-            // Process is done running for now.
-            finalproc = 0;
-            c->proc = 0;
-          }
+          // Process is done running for now.
+          finalproc = 0;
+          c->proc = 0;
         }
       }
     }
@@ -593,11 +591,12 @@ void
 setPriority(int pid, int priority)
 {  
   struct proc *p;
-  acquire(&ptable.lock);
-
-  if(priority < 0 || priority > 3)
+  if(priority < 0 || priority > 3){
     cprintf("ERROR : Invalid priority.\n");
+    exit();
+  }
 
+  acquire(&ptable.lock);
   int valid = 0;
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     if(p->pid == pid){
@@ -718,6 +717,7 @@ schedulerLock(int password)
   // If not
   else {
     cprintf("ERROR : Wrong Password\n");
+    cprintf("        Failed to lock the scheduler.\n");
     cprintf("pid : %d\ttime quantum : %d\tqueue level : %d\n", p->pid, p->runtime, p->queue);
     release(&ptable.lock);
     exit();
@@ -755,6 +755,7 @@ schedulerUnlock(int password)
   }
   else{
     cprintf("ERROR : Wrong Password\n");
+    cprintf("        Failed to unlock the scheduler.\n");
     cprintf("pid : %d\ttime quantum : %d\tqueue level : %d\n", p->pid, p->runtime, p->queue);
     release(&ptable.lock);
     exit();

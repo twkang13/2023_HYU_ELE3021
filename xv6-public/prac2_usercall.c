@@ -5,6 +5,6 @@
 int
 main(int argc, char* argv[])
 {
-    __asm__("int $129");
+    __asm__("int $130");
     exit();
 };
