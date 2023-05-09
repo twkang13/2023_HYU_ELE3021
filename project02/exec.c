@@ -166,16 +166,23 @@ exec2(char *path, char **argv, int stacksize)
   end_op();
   ip = 0;
 
-  // Allocate two pages at the next page boundary.
+  // Allocate stack pages and a guard page at the next page boundary.
   // Make the first inaccessible.  Use the second as the user stack.
   /* TODO : Implement the code that allocates a number of stack pages.
    *        1 <= stacksize <= 100, integer
    *        num of guard page : must be 1
    */
   sz = PGROUNDUP(sz);
-  if((sz = allocuvm(pgdir, sz, sz + 2*PGSIZE)) == 0)
+  // If stacksize is out of range, error
+  if(stacksize < 1 || 100 < stacksize)
     goto bad;
-  clearpteu(pgdir, (char*)(sz - 2*PGSIZE));
+  // Allocate stack pages
+  // TODO : segfault test
+  for (int i = 0; i < stacksize; i++){
+    if((sz = allocuvm(pgdir, sz, sz + PGSIZE)) == 0)
+      goto bad;
+  }
+  clearpteu(pgdir, (char*)(sz - stacksize*PGSIZE));
   sp = sz;
 
   // Push argument strings, prepare rest of stack in ustack.
