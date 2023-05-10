@@ -88,6 +88,7 @@ allocproc(void)
 found:
   p->state = EMBRYO;
   p->pid = nextpid++;
+  p->memlim = __INT_MAX__;
 
   release(&ptable.lock);
 
@@ -214,6 +215,7 @@ fork(void)
 
   acquire(&ptable.lock);
 
+  np->memlim = __INT_MAX__;
   np->state = RUNNABLE;
 
   release(&ptable.lock);
@@ -494,6 +496,36 @@ kill(int pid)
   }
   release(&ptable.lock);
   return -1;
+}
+
+// Set the memory limit of process with pid "pid"
+// Return 0 if the operation is successfully done.
+// Return -1 if there is an error.
+int
+setmemorylimit(int pid, int limit)
+{
+  struct proc *p;
+  int exist = 0;
+
+  // Find a process with pid "pid"
+  acquire(&ptable.lock);
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if(p->pid == pid){
+      exist = 1;
+      break;
+    }
+  }
+  // Error occurs
+  if(!exist || limit < 0 || limit < p->memlim){
+    release(&ptable.lock);
+    return -1;
+  }
+
+  // Set process "pid"'s memory to limit
+  if(limit == 0)
+    limit = __INT_MAX__;
+  p->memlim = limit;
+  return 0;
 }
 
 //PAGEBREAK: 36

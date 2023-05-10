@@ -168,10 +168,6 @@ exec2(char *path, char **argv, int stacksize)
 
   // Allocate stack pages and a guard page at the next page boundary.
   // Make the first inaccessible.  Use the second as the user stack.
-  /* TODO : Implement the code that allocates a number of stack pages.
-   *        1 <= stacksize <= 100, integer
-   *        num of guard page : must be 1
-   */
   sz = PGROUNDUP(sz);
   // If stacksize is out of range, error
   if(stacksize < 1 || 100 < stacksize)
@@ -182,6 +178,7 @@ exec2(char *path, char **argv, int stacksize)
     if((sz = allocuvm(pgdir, sz, sz + PGSIZE)) == 0)
       goto bad;
   }
+  // Allocate the guard page
   clearpteu(pgdir, (char*)(sz - stacksize*PGSIZE));
   sp = sz;
 
