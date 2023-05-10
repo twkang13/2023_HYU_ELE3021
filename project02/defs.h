@@ -122,6 +122,7 @@ int             wait(void);
 void            wakeup(void*);
 void            yield(void);
 int             setmemorylimit(int, int);
+int             plist(void);
 
 // swtch.S
 void            swtch(struct context**, struct context*);

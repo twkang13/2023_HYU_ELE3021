@@ -87,6 +87,12 @@ sys_setmemorylimit(void)
   return setmemorylimit(pid, limit);
 }
 
+int
+sys_plist(void)
+{
+  return plist();
+}
+
 // return how many clock tick interrupts have occurred
 // since start.
 int

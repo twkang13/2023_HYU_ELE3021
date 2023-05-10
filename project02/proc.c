@@ -88,7 +88,6 @@ allocproc(void)
 found:
   p->state = EMBRYO;
   p->pid = nextpid++;
-  p->memlim = __INT_MAX__;
 
   release(&ptable.lock);
 
@@ -149,6 +148,7 @@ userinit(void)
   // because the assignment might not be atomic.
   acquire(&ptable.lock);
 
+  p->memlim = 0;
   p->state = RUNNABLE;
 
   release(&ptable.lock);
@@ -215,7 +215,7 @@ fork(void)
 
   acquire(&ptable.lock);
 
-  np->memlim = __INT_MAX__;
+  np->memlim = 0;
   np->state = RUNNABLE;
 
   release(&ptable.lock);
@@ -515,16 +515,23 @@ setmemorylimit(int pid, int limit)
       break;
     }
   }
-  // Error occurs
+  // When error occurs
   if(!exist || limit < 0 || limit < p->memlim){
     release(&ptable.lock);
     return -1;
   }
 
   // Set process "pid"'s memory to limit
-  if(limit == 0)
-    limit = __INT_MAX__;
   p->memlim = limit;
+  release(&ptable.lock);
+  return 0;
+}
+
+// TODO : Implement plist (function of pmanager)
+int
+plist()
+{
+  
   return 0;
 }
 
