@@ -129,7 +129,7 @@ exec2(char *path, char **argv, int stacksize)
 
   if((ip = namei(path)) == 0){
     end_op();
-    cprintf("exec: fail\n");
+    cprintf("exec2: fail\n");
     return -1;
   }
   ilock(ip);
@@ -172,12 +172,14 @@ exec2(char *path, char **argv, int stacksize)
   // If stacksize is out of range, error
   if(stacksize < 1 || 100 < stacksize)
     goto bad;
+  // If stacksize is too large, error
+  if(curproc->sz + stacksize*PGSIZE > curproc->memlim)
+    goto bad;
+    
   // Allocate stack pages
   // TODO : segfault test
-  for (int i = 0; i < stacksize; i++){
-    if((sz = allocuvm(pgdir, sz, sz + PGSIZE)) == 0)
-      goto bad;
-  }
+  if((sz = allocuvm(pgdir, sz, sz + stacksize*PGSIZE)) == 0)
+    goto bad;
   // Allocate the guard page
   clearpteu(pgdir, (char*)(sz - stacksize*PGSIZE));
   sp = sz;
