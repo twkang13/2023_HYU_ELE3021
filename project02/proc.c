@@ -515,8 +515,17 @@ setmemorylimit(int pid, int limit)
       break;
     }
   }
-  // When error occurs
-  if(!exist || limit < 0 || limit < p->memlim){
+
+  // When process with pid "pid" does not exist
+  // or limit is an invalid value
+  // or limit is not a PGSIZE(4KB) multiple, ERROR
+  int memlim = 0;
+  if(p->memlim)
+    p->sz < p->memlim ? (memlim = p->sz) : (memlim = p->memlim);
+  else
+    memlim = p->sz;
+
+  if(!exist || limit < 0 || limit <= memlim || limit % PGSIZE != 0){
     release(&ptable.lock);
     return -1;
   }
@@ -527,11 +536,25 @@ setmemorylimit(int pid, int limit)
   return 0;
 }
 
-// TODO : Implement plist (function of pmanager)
+// Print informations of all RUNNING or RUNNABLE processes
 int
 plist()
 {
-  
+  struct proc *p;
+
+  acquire(&ptable.lock);
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if(p->state == RUNNING || p->state == RUNNABLE){
+      cprintf("name : %s, pid : %d, allocated memory : %d, ", p->name, p->pid, p->sz);
+
+      if(p->memlim)
+        cprintf("memory limit : %d\n", p->memlim);
+      else
+        cprintf("memory limit : unlimited\n");
+    }
+  }
+  release(&ptable.lock);
+
   return 0;
 }
 

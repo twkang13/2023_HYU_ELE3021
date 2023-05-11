@@ -29,22 +29,22 @@ main(int argc, char *argv[])
                 arg[argNum][j] = buffer[i];
         }
 
-        if(!strcmp(arg[0], "list")){
+        if(!strcmp(arg[0], "list") && argNum == 1){
             if(plist() < 0)
                 printf(1, "ERROR : list failed.\n");
         }
-        else if(!strcmp(arg[0], "kill")){
+        else if(!strcmp(arg[0], "kill") && argNum == 2){
             // pid = arg[1]
             if(kill(atoi(arg[1])) < 0)
                 printf(1, "ERROR : kill failed.\n");
             else
                 printf(1, "kill success.\n");
         }
-        else if(!strcmp(arg[0], "execute")){
+        else if(!strcmp(arg[0], "execute") && argNum == 3){
             // path = arg[1]    stacksize = arg[2]
             exec2(arg[1], argv, atoi(arg[2]));
         }
-        else if(!strcmp(arg[0], "memlim")){
+        else if(!strcmp(arg[0], "memlim") && argNum == 3){
             // pid = arg[1]     limit = arg[2]
             if(setmemorylimit(atoi(arg[1]), atoi(arg[2])) < 0)
                 printf(1, "ERROR : memlim failed.\n");
