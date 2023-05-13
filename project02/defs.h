@@ -9,6 +9,7 @@ struct spinlock;
 struct sleeplock;
 struct stat;
 struct superblock;
+typedef uint thread_t;
 
 // bio.c
 void            binit(void);
@@ -159,10 +160,15 @@ int             fetchint(uint, int*);
 int             fetchstr(uint, char**);
 void            syscall(void);
 
+// thread.c
+int             thread_create(thread_t *, void *(*)(void *), void *);
+void            thread_exit(void *);
+int             thread_join(thread_t, void **);
+
 // timer.c
 void            timerinit(void);
 
-// trap.c
+// trap.cz
 void            idtinit(void);
 extern uint     ticks;
 void            tvinit(void);

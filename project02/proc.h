@@ -33,11 +33,13 @@ struct context {
 };
 
 enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
+typedef uint thread_t;
 
 // Per-process state
 struct proc {
   uint sz;                     // Size of process memory (bytes)
   int memlim;                  // Memory limit of process (bytes), 0 means unlimited
+  thread_t threads[NTHREAD];   // Threads of process
   pde_t* pgdir;                // Page table
   char *kstack;                // Bottom of kernel stack for this process
   enum procstate state;        // Process state
