@@ -51,6 +51,7 @@ main(int argc, char *argv[])
             else
                 printf(1, "memlim success.\n");
         }
+        
         else if(!strcmp(arg[0], "exit") && argNum == 1){
             exit();
         }

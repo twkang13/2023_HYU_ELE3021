@@ -39,7 +39,6 @@ typedef uint thread_t;
 struct proc {
   uint sz;                     // Size of process memory (bytes)
   int memlim;                  // Memory limit of process (bytes), 0 means unlimited
-  thread_t threads[NTHREAD];   // Threads of process
   pde_t* pgdir;                // Page table
   char *kstack;                // Bottom of kernel stack for this process
   enum procstate state;        // Process state
@@ -52,6 +51,25 @@ struct proc {
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
+};
+
+// Thread
+struct thread {
+  uint sz;                     // Size of thread memory (bytes)
+  int memlim;                  // Memory limit of thread (bytes), 0 means unlimited
+  pde_t* pgdir;                // Page table
+  char *kstack;                // Bottom of kernel stack for this thread
+  enum procstate state;        // Thread state
+  thread_t tid;                // Thread ID
+  thread_t *parent;            // Parent thread
+  struct proc *proc;           // Process of thread
+  struct trapframe *tf;        // Trap frame for current syscall
+  struct context *context;     // swtch() here to run thread
+  void *chan;                  // If non-zero, sleeping on chan
+  int killed;                  // If non-zero, have been killed
+  struct file *ofile[NOFILE];  // Open files
+  struct inode *cwd;           // Current directory
+  char name[16];               // Thread name (debugging)
 };
 
 // Process memory is laid out contiguously, low addresses first:
