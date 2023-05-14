@@ -562,6 +562,7 @@ plist()
 // Create thread
 // Return 0 if thread is succssefully created
 // Return -1 if there is an error
+// Modified code from fork() and exec()
 int
 thread_create(thread_t *thread, void *(*start_routine)(void *), void *arg)
 {
@@ -590,8 +591,9 @@ thread_create(thread_t *thread, void *(*start_routine)(void *), void *arg)
   sp = nt->sz;
 
   // Set thread information
-  *thread = ++nt->tid;
-  nt->tproc = p;
+  nt->isThread = 1;
+  *thread = ++p->threadnum;
+  nt->parent = p;
   nt->tf = p->tf;
 
   // Initialize arguments for thread
@@ -631,17 +633,105 @@ thread_create(thread_t *thread, void *(*start_routine)(void *), void *arg)
 
 
 // Exit thread
+// Modified code from exit()
 void
 thread_exit(void *retval)
 {
+  struct proc *curthd = myproc();
+  struct proc *p;
+  int fd;
 
+  if(curthd == initproc)
+    panic("init exiting");
+
+  // Close all open files.
+  for(fd = 0; fd < NOFILE; fd++){
+    if(curthd->ofile[fd]){
+      fileclose(curthd->ofile[fd]);
+      curthd->ofile[fd] = 0;
+    }
+  }
+
+  begin_op();
+  iput(curthd->cwd);
+  end_op();
+  curthd->cwd = 0;
+
+  acquire(&ptable.lock);
+
+  // Set return value
+  curthd->retval = retval;
+
+  // Decrement thread number of process
+  --curthd->parent->threadnum;
+
+  // Parent might be sleeping in wait().
+  wakeup1(curthd->parent);
+
+  // Pass abandoned children to init.
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if(p->parent == curthd){
+      p->parent = initproc;
+      if(p->state == ZOMBIE)
+        wakeup1(initproc);
+    }
+  }
+
+  // Jump into the scheduler, never to return.
+  curthd->state = ZOMBIE;
+  sched();
+  panic("zombie exit");
 }
 
 // Join thread
+// Return 0 if thread is succssefully joined
+// Return -1 if there is an error
+// Modified code from wait()
 int
 thread_join(thread_t thread, void **retval)
 {
-    return 0;
+  struct proc *p;
+  int havekids, pid;
+  struct proc *curproc = myproc();
+  
+  acquire(&ptable.lock);
+  for(;;){
+    // Scan through table looking for exited children.
+    havekids = 0;
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+      if(p->parent != curproc)
+        continue;
+      havekids = 1;
+      if(p->state == ZOMBIE){
+        // Found one.
+        pid = p->pid;
+        kfree(p->kstack);
+        p->kstack = 0;
+        freevm(p->pgdir);
+        p->pid = 0;
+        p->parent = 0;
+        p->name[0] = 0;
+        p->killed = 0;
+        p->state = UNUSED;
+        // Thread
+        p->isThread = 0;
+        p->tid = 0;
+        p->arg = 0;
+        p->retval = 0;
+        release(&ptable.lock);
+        return 0;
+      }
+    }
+
+    // No point waiting if we don't have any children.
+    if(!havekids || curproc->killed){
+      release(&ptable.lock);
+      return -1;
+    }
+
+    // Wait for children to exit.  (See wakeup1 call in proc_exit.)
+    sleep(curproc, &ptable.lock);  //DOC: wait-sleep
+  }
 }
 
 //PAGEBREAK: 36
