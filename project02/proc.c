@@ -586,6 +586,8 @@ thread_create(thread_t *thread, void *(*start_routine)(void *), void *arg)
     return -1;
   }
   clearpteu(p->pgdir, (char*)(p->sz - 2*PGSIZE));
+
+  // Share page table and size of process memory
   nt->pgdir = p->pgdir;
   nt->sz = p->sz;
   sp = nt->sz;
@@ -659,12 +661,6 @@ thread_exit(void *retval)
 
   acquire(&ptable.lock);
 
-  // Set return value
-  curthd->retval = retval;
-
-  // Decrement thread number of process
-  --curthd->parent->threadnum;
-
   // Parent might be sleeping in wait().
   wakeup1(curthd->parent);
 
@@ -677,8 +673,13 @@ thread_exit(void *retval)
     }
   }
 
+  // Set return value and decrease thread number of process
+  curthd->retval = retval;
+  --curthd->parent->threadnum;
+
   // Jump into the scheduler, never to return.
   curthd->state = ZOMBIE;
+
   sched();
   panic("zombie exit");
 }
@@ -690,41 +691,39 @@ thread_exit(void *retval)
 int
 thread_join(thread_t thread, void **retval)
 {
-  struct proc *p;
-  int havekids, pid;
+  struct proc *t;
   struct proc *curproc = myproc();
   
   acquire(&ptable.lock);
   for(;;){
-    // Scan through table looking for exited children.
-    havekids = 0;
-    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if(p->parent != curproc)
+    // Scan through table looking for exited child thread.
+    for(t = ptable.proc; t < &ptable.proc[NPROC] && t->isThread; t++){
+      if(t->pid != thread)
         continue;
-      havekids = 1;
-      if(p->state == ZOMBIE){
-        // Found one.
-        pid = p->pid;
-        kfree(p->kstack);
-        p->kstack = 0;
-        freevm(p->pgdir);
-        p->pid = 0;
-        p->parent = 0;
-        p->name[0] = 0;
-        p->killed = 0;
-        p->state = UNUSED;
+      if(t->state == ZOMBIE){
+        kfree(t->kstack);
+        t->kstack = 0;
+        // If terminated thread is a main thread, free page table of threads
+        if(t->parent->threadnum == 0)
+          freevm(t->pgdir);
+        t->pid = 0;
+        t->parent = 0;
+        t->name[0] = 0;
+        t->killed = 0;
+        t->state = UNUSED;
         // Thread
-        p->isThread = 0;
-        p->tid = 0;
-        p->arg = 0;
-        p->retval = 0;
+        t->isThread = 0;
+        t->tid = 0;
+        t->arg = 0;
+        *retval = t->retval;
+        t->retval = 0;
         release(&ptable.lock);
         return 0;
       }
     }
 
     // No point waiting if we don't have any children.
-    if(!havekids || curproc->killed){
+    if(curproc->killed){
       release(&ptable.lock);
       return -1;
     }
