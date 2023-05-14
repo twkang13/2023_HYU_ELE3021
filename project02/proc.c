@@ -577,19 +577,22 @@ thread_create(thread_t *thread, void *(*start_routine)(void *), void *arg)
 
   acquire(&ptable.lock);
 
-  // Allocate two pages at the next page boundary.
+  // Allocate two pages for thread at the next page boundary.
   // Make the first inaccessible.  Use the second as the user stack.
   p->sz = PGROUNDUP(p->sz);
-  if((p->sz = allocuvm(p->pgdir, p->sz, p->sz + 2*PGSIZE)) == 0)
+  if((p->sz = allocuvm(p->pgdir, p->sz, p->sz + 2*PGSIZE)) == 0){
+    release(&ptable.lock);
     return -1;
+  }
   clearpteu(p->pgdir, (char*)(p->sz - 2*PGSIZE));
+  nt->pgdir = p->pgdir;
   nt->sz = p->sz;
   sp = nt->sz;
 
   // Set thread information
-  nt->isThread = 1;
   *thread = ++nt->tid;
   nt->tproc = p;
+  nt->tf = p->tf;
 
   // Initialize arguments for thread
   ustack[0] = 0xffffffff;  // fake return PC
@@ -598,18 +601,25 @@ thread_create(thread_t *thread, void *(*start_routine)(void *), void *arg)
   sp -= 2*4;
   if(copyout(nt->pgdir, sp, ustack, 2*4) < 0){
     freevm(nt->pgdir);
+    release(&ptable.lock);
     return -1;
   }
 
-  // Initialize thread state
+  // Initialize thread state (Copy state of process)
   nt->state = RUNNABLE;
+  nt->tf->eax = 0;
+  nt->tf->eip = (uint)start_routine;
+  nt->tf->esp = sp;
 
+  for(int i = 0; i < NOFILE; i++)
+    if(p->ofile[i])
+      nt->ofile[i] = filedup(p->ofile[i]);
+  nt->cwd = idup(p->cwd);
+
+  safestrcpy(nt->name, p->name, sizeof(p->name));
+
+  // Run thread
   oldpgdir = nt->pgdir;
-  p->pgdir = nt->pgdir;
-  p->sz = nt->sz;
-  p->tf->eip = (uint)start_routine;
-  p->tf->esp = sp;
-
   nt->state = RUNNING;
   switchuvm(nt);
   freevm(oldpgdir);
