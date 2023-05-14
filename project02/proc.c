@@ -558,29 +558,65 @@ plist()
   return 0;
 }
 
+// THREAD
 // Create thread
+// Return 0 if thread is succssefully created
+// Return -1 if there is an error
 int
 thread_create(thread_t *thread, void *(*start_routine)(void *), void *arg)
 {
-    // TODO : Get current process
+  uint sp, ustack[2];
+  pde_t *oldpgdir;
+  struct proc *nt;
+  struct proc *p = myproc();
 
-    // TODO : proc.c에서 thread_create 사용 전에 ptable lock 걸기 
-
-    // TODO : Find a thread slot and allocate thread to it
-
-    // TODO : Initialize thread context
-
-    // TODO : Initialize arguments for thread
-
-    // TODO : Initialize thread state
-
-    // TODO : Run thread
-
-    // Thread is created
-    return 0;
-
-    // If thread is not created
+  // Allocate thread
+  if((nt = allocproc()) == 0){
     return -1;
+  }
+
+  acquire(&ptable.lock);
+
+  // Allocate two pages at the next page boundary.
+  // Make the first inaccessible.  Use the second as the user stack.
+  p->sz = PGROUNDUP(p->sz);
+  if((p->sz = allocuvm(p->pgdir, p->sz, p->sz + 2*PGSIZE)) == 0)
+    return -1;
+  clearpteu(p->pgdir, (char*)(p->sz - 2*PGSIZE));
+  nt->sz = p->sz;
+  sp = nt->sz;
+
+  // Set thread information
+  nt->isThread = 1;
+  *thread = ++nt->tid;
+  nt->tproc = p;
+
+  // Initialize arguments for thread
+  ustack[0] = 0xffffffff;  // fake return PC
+  ustack[1] = (uint)arg;
+
+  sp -= 2*4;
+  if(copyout(nt->pgdir, sp, ustack, 2*4) < 0){
+    freevm(nt->pgdir);
+    return -1;
+  }
+
+  // Initialize thread state
+  nt->state = RUNNABLE;
+
+  oldpgdir = nt->pgdir;
+  p->pgdir = nt->pgdir;
+  p->sz = nt->sz;
+  p->tf->eip = (uint)start_routine;
+  p->tf->esp = sp;
+
+  nt->state = RUNNING;
+  switchuvm(nt);
+  freevm(oldpgdir);
+
+  // Thread is created
+  release(&ptable.lock);
+  return 0;
 }
 
 
