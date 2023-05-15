@@ -29,6 +29,8 @@ exec(char *path, char **argv)
   ilock(ip);
   pgdir = 0;
 
+  // TODO : 기존 process의 thread 정리
+
   // Check ELF header
   if(readi(ip, (char*)&elf, 0, sizeof(elf)) != sizeof(elf))
     goto bad;

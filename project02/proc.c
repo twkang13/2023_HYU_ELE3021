@@ -213,6 +213,8 @@ fork(void)
       np->ofile[i] = filedup(curproc->ofile[i]);
   np->cwd = idup(curproc->cwd);
 
+  // TODO : thread의 경우 복사되는 데이터 확인 
+
   safestrcpy(np->name, curproc->name, sizeof(curproc->name));
 
   pid = np->pid;
@@ -486,6 +488,8 @@ int
 kill(int pid)
 {
   struct proc *p;
+
+  // TODO : 하나의 thread가 Kill되면 process의 다른 thread도 모두 kill
 
   acquire(&ptable.lock);
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
