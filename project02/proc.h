@@ -44,7 +44,7 @@ struct proc {
   char *kstack;                // Bottom of kernel stack for this process
   enum procstate state;        // Process state
   int pid;                     // Process ID
-  struct proc *parent;         // Parent process
+  struct proc *parent;         // Parent process OR Parent thread (main thread)
   struct trapframe *tf;        // Trap frame for current syscall
   struct context *context;     // swtch() here to run process
   void *chan;                  // If non-zero, sleeping on chan
@@ -56,7 +56,6 @@ struct proc {
   // Thread
   int isThread;                // If isThread == 1, process is a thread.
   thread_t  tid;               // Thread ID
-  struct proc *tproc;          // Parent process of thread
   int isMain;                  // If isMain == 1, thread is main thread.
   void *arg;                   // Argument for thread
   void *retval;                // Return value of thread

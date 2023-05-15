@@ -600,16 +600,18 @@ thread_create(thread_t *thread, void *(*start_routine)(void *), void *arg)
 
   // Set thread information
   nt->isThread = 1;
-  if(p->threadnum == 0)
-    nt->isMain = 1;
+  if(p->threadnum == 0){
+    p->isThread = 1;
+    p->isMain = 1;
+  }
   *thread = ++p->threadnum;
   nt->parent = p;
   nt->tf = p->tf;
 
-  // TODO : main thread의 pid 공유하는 기능 추가
+  // Share pid of main thread
   if(!nt->isMain){
-    for(struct proc *t = ptable.proc; t < &ptable.proc[NPROC]; t++){
-      if(t->isMain && nt->parent->pid == t->parent->pid){
+    for(struct proc *t = ptable.proc; t < &ptable.proc[NPROC] && t->isThread; t++){
+      if(t->isMain && nt->parent->pid == t->pid){
         nt->pid = t->pid;
         break;
       }
@@ -627,7 +629,7 @@ thread_create(thread_t *thread, void *(*start_routine)(void *), void *arg)
     return -1;
   }
 
-  // Initialize thread state (Copy state of process)
+  // Initialize thread state (Copy state of main thread)
   nt->state = RUNNABLE;
   nt->tf->eax = 0;
   nt->tf->eip = (uint)start_routine;
