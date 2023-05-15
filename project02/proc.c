@@ -600,8 +600,10 @@ thread_create(thread_t *thread, void *(*start_routine)(void *), void *arg)
 
   // Set thread information
   nt->isThread = 1;
-  if(p->threadnum == 0)
-    nt->isMain = 1;
+  if(p->threadnum == 0){
+    p->isThread = 1;
+    p->isMain = 1;
+  }
   *thread = ++p->threadnum;
   nt->parent = p;
   nt->tf = p->tf;
@@ -609,9 +611,8 @@ thread_create(thread_t *thread, void *(*start_routine)(void *), void *arg)
   // Share pid of main thread
   if(!nt->isMain){
     for(struct proc *t = ptable.proc; t < &ptable.proc[NPROC] && t->isThread; t++){
-      if(t->isMain && nt->parent->pid == t->parent->pid){
+      if(t->isMain && nt->parent->pid == t->pid){
         nt->pid = t->pid;
-        nt->main = t;
         break;
       }
     }

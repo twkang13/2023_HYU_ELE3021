@@ -106,9 +106,9 @@ extern int sys_uptime(void);
 extern int sys_exec2(void);
 extern int sys_setmemorylimit(void);
 extern int sys_plist(void);
-extern int sys_thcrat(void);
-extern int sys_thexit(void);
-extern int sys_thjoin(void);
+extern int sys_thread_create(void);
+extern int sys_thread_exit(void);
+extern int sys_thread_join(void);
 
 static int (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
@@ -135,9 +135,9 @@ static int (*syscalls[])(void) = {
 [SYS_exec2]   sys_exec2,
 [SYS_setmemorylimit] sys_setmemorylimit,
 [SYS_plist]   sys_plist,
-[SYS_thcrat]  sys_thcrat,
-[SYS_thexit]  sys_thexit,
-[SYS_thjoin]  sys_thjoin,
+[SYS_thread_create]  sys_thread_create,
+[SYS_thread_exit]  sys_thread_exit,
+[SYS_thread_join]  sys_thread_join,
 };
 
 void

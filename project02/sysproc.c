@@ -94,7 +94,7 @@ sys_plist(void)
 }
 
 int
-sys_thcrat(void)
+sys_thread_create(void)
 {
   thread_t *thread;
   void *(*start_routine)(void *);
@@ -111,7 +111,7 @@ sys_thcrat(void)
 }
 
 int
-sys_thexit(void)
+sys_thread_exit(void)
 {
   void *retval;
 
@@ -123,7 +123,7 @@ sys_thexit(void)
 }
 
 int
-sys_thjoin(void)
+sys_thread_join(void)
 {
   thread_t thread;
   void **retval;
