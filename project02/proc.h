@@ -54,9 +54,10 @@ struct proc {
   char name[16];               // Process name (debugging)
 
   // Thread
-  int isThread;                // If isThread == 1, this process is a thread.
+  int isThread;                // If isThread == 1, process is a thread.
   thread_t  tid;               // Thread ID
-  struct proc *tproc;          // Parent process of thread. If tproc is NULL, this process is not a process.
+  struct proc *tproc;          // Parent process of thread
+  int isMain;                  // If isMain == 1, thread is main thread.
   void *arg;                   // Argument for thread
   void *retval;                // Return value of thread
 };

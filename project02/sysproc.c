@@ -93,6 +93,49 @@ sys_plist(void)
   return plist();
 }
 
+int
+sys_thcrat(void)
+{
+  thread_t *thread;
+  void *(*start_routine)(void *);
+  void *arg;
+
+  if(argptr(0, (void *)&thread, sizeof(thread)) < 0)
+    return -1;
+  if(argptr(1, (void *)&start_routine, sizeof(start_routine)) < 0)
+    return -1;
+  if(argptr(2, (void *)&arg, sizeof(arg)) < 0)
+    return -1;
+
+  return thread_create(thread, start_routine, arg);
+}
+
+int
+sys_thexit(void)
+{
+  void *retval;
+
+  if(argptr(0, (void *)&retval, sizeof(retval)) < 0)
+    return -1;
+
+  thread_exit(retval);
+  return 0;
+}
+
+int
+sys_thjoin(void)
+{
+  thread_t thread;
+  void **retval;
+
+  if(argint(0, (int *)&thread) < 0)
+    return -1;
+  if(argptr(1, (void *)&retval, sizeof(retval)) < 0)
+    return -1;
+
+  return thread_join(thread, retval);
+}
+
 // return how many clock tick interrupts have occurred
 // since start.
 int

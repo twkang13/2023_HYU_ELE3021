@@ -164,6 +164,10 @@ growproc(int n)
 
   sz = curproc->sz;
   if(n > 0){
+    // cannot grow memory if n is bigger than memory limit
+    if(0 < curproc->memlim && curproc->memlim < sz + n)
+      return -1;
+
     if((sz = allocuvm(curproc->pgdir, sz, sz + n)) == 0)
       return -1;
   } else if(n < 0){
@@ -559,6 +563,7 @@ plist()
 }
 
 // THREAD
+// TODO : thread.c로 분리
 // Create thread
 // Return 0 if thread is succssefully created
 // Return -1 if there is an error
@@ -588,15 +593,28 @@ thread_create(thread_t *thread, void *(*start_routine)(void *), void *arg)
   clearpteu(p->pgdir, (char*)(p->sz - 2*PGSIZE));
 
   // Share page table and size of process memory
+  // TODO : 자원 공유 확인하기
   nt->pgdir = p->pgdir;
   nt->sz = p->sz;
   sp = nt->sz;
 
   // Set thread information
   nt->isThread = 1;
+  if(p->threadnum == 0)
+    nt->isMain = 1;
   *thread = ++p->threadnum;
   nt->parent = p;
   nt->tf = p->tf;
+
+  // TODO : main thread의 pid 공유하는 기능 추가
+  if(!nt->isMain){
+    for(struct proc *t = ptable.proc; t < &ptable.proc[NPROC]; t++){
+      if(t->isMain && nt->parent->pid == t->parent->pid){
+        nt->pid = t->pid;
+        break;
+      }
+    }
+  }
 
   // Initialize arguments for thread
   ustack[0] = 0xffffffff;  // fake return PC
@@ -696,7 +714,7 @@ thread_join(thread_t thread, void **retval)
   
   acquire(&ptable.lock);
   for(;;){
-    // Scan through table looking for exited child thread.
+    // Scan through table looking for exited thread with tid "thread".
     for(t = ptable.proc; t < &ptable.proc[NPROC] && t->isThread; t++){
       if(t->pid != thread)
         continue;
@@ -706,15 +724,17 @@ thread_join(thread_t thread, void **retval)
         // If terminated thread is a main thread, free page table of threads
         if(t->parent->threadnum == 0)
           freevm(t->pgdir);
+        // Reaping process stuff
         t->pid = 0;
         t->parent = 0;
         t->name[0] = 0;
         t->killed = 0;
         t->state = UNUSED;
-        // Thread
+        // Reaping thread stuff
         t->isThread = 0;
         t->tid = 0;
         t->arg = 0;
+        // Set return value and initialize retval
         *retval = t->retval;
         t->retval = 0;
         release(&ptable.lock);
@@ -731,6 +751,8 @@ thread_join(thread_t thread, void **retval)
     // Wait for children to exit.  (See wakeup1 call in proc_exit.)
     sleep(curproc, &ptable.lock);  //DOC: wait-sleep
   }
+
+  // TODO : return -1인 조건 더 따져보기 
 }
 
 //PAGEBREAK: 36
@@ -761,6 +783,10 @@ procdump(void)
     else
       state = "???";
     cprintf("%d %s %s", p->pid, state, p->name);
+    
+    if(p->isThread)
+      cprintf(" (thread %d)", p->tid);
+
     if(p->state == SLEEPING){
       getcallerpcs((uint*)p->context->ebp+2, pc);
       for(i=0; i<10 && pc[i] != 0; i++)

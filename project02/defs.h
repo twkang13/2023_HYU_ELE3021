@@ -124,6 +124,9 @@ void            wakeup(void*);
 void            yield(void);
 int             setmemorylimit(int, int);
 int             plist(void);
+int             thread_create(thread_t *, void *(*)(void *), void *);
+void            thread_exit(void *);
+int             thread_join(thread_t, void **);
 
 // swtch.S
 void            swtch(struct context**, struct context*);
@@ -159,11 +162,6 @@ int             argstr(int, char**);
 int             fetchint(uint, int*);
 int             fetchstr(uint, char**);
 void            syscall(void);
-
-// thread.c
-int             thread_create(thread_t *, void *(*)(void *), void *);
-void            thread_exit(void *);
-int             thread_join(thread_t, void **);
 
 // timer.c
 void            timerinit(void);

@@ -23,3 +23,6 @@
 #define SYS_exec2  22
 #define SYS_setmemorylimit 23
 #define SYS_plist  24
+#define SYS_thcrat 25
+#define SYS_thexit 26
+#define SYS_thjoin 27
