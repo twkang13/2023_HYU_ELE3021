@@ -9,7 +9,8 @@ thread_t thread[NTHREAD];
 
 void *thread_func(void *arg)
 {
-    printf(1, "thread : %d\n", (int)arg);
+    printf(1, "thread : %d", (int)arg);
+    thread_exit(arg);
     return 0;
 }
 
@@ -18,19 +19,10 @@ int main(int argc, char *argv[])
     printf(1, "Thread Test\n");
 
     for(int i = 0; i < NTHREAD; i++){
-        int fail = thread_create(&thread[i], thread_func, (void *)i);
-        if(fail){
-            printf(1, "thread(%d) : thread_create failed\n", thread[i]);
+        if(thread_create(&thread[i], thread_func, (void *)i) < 0)
             exit();
-        }
-        else{
-            printf(1, "thread(%d) : created\n", thread[i]);
-        }
+        thread_join(thread[i], 0);
         sleep(100);
-    }
-    // exit 안됨,, 디버깅 필요 
-    for(int i = 0; i < NTHREAD; i++){
-        thread_exit(&thread[i]);
     }
 
     printf(1, "Thread Test Done\n");

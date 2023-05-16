@@ -6,6 +6,7 @@
 #include "defs.h"
 #include "x86.h"
 #include "elf.h"
+#include "spinlock.h"
 
 int
 exec(char *path, char **argv)
@@ -30,6 +31,8 @@ exec(char *path, char **argv)
   pgdir = 0;
 
   // TODO : 기존 process의 thread 정리
+  if(curproc->isThread && curproc->isMain)
+    killThreads(curproc);
 
   // Check ELF header
   if(readi(ip, (char*)&elf, 0, sizeof(elf)) != sizeof(elf))

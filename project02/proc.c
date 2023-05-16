@@ -55,7 +55,8 @@ mycpu(void)
 // Disable interrupts so that we are not rescheduled
 // while reading proc from the cpu structure
 struct proc*
-myproc(void) {
+myproc(void)
+{
   struct cpu *c;
   struct proc *p;
   pushcli();
@@ -491,12 +492,16 @@ kill(int pid)
 {
   struct proc *p;
 
-  // TODO : 하나의 thread가 Kill되면 process의 다른 thread도 모두 kill
-
-  acquire(&ptable.lock);
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     if(p->pid == pid){
       p->killed = 1;
+      // Kill all thread of process if one of them is killed.
+      if(p->isThread){
+        if(p->isMain)
+          killThreads(p);
+        else
+          killThreads(p->parent);
+      }
       // Wake process from sleep if necessary.
       if(p->state == SLEEPING)
         p->state = RUNNABLE;
@@ -596,12 +601,12 @@ thread_create(thread_t *thread, void *(*start_routine)(void *), void *arg)
     return -1;
   }
   clearpteu(p->pgdir, (char*)(p->sz - 2*PGSIZE));
+  sp = p->sz;
 
   // Share page table and size of process memory
   // TODO : 자원 공유 확인하기
   nt->pgdir = p->pgdir;
   nt->sz = p->sz;
-  sp = nt->sz;
   *nt->tf = *p->tf;
 
   // Set thread information
@@ -609,9 +614,18 @@ thread_create(thread_t *thread, void *(*start_routine)(void *), void *arg)
   if(p->threadnum == 0){
     p->isThread = 1;
     p->isMain = 1;
+    p->nextid = 2;
+    p->tid = 1;
   }
-  *thread = ++p->threadnum;
-  nt->parent = p;
+  if(p->isMain)
+    nt->parent = p;
+  else
+    nt->parent = p->parent;
+
+  // Set thread id
+  ++nt->parent->threadnum;
+  nt->tid = nt->parent->nextid++;
+  *thread = nt->tid;
 
   // Share pid of main thread
   if(!nt->isMain){
@@ -651,7 +665,6 @@ thread_create(thread_t *thread, void *(*start_routine)(void *), void *arg)
 
   // Thread is created
   release(&ptable.lock);
-  yield();
   return 0;
 }
 
@@ -664,9 +677,6 @@ thread_exit(void *retval)
   struct proc *curthd = myproc();
   struct proc *p;
   int fd;
-
-  // For debugging
-  cprintf("thread_exit\n");
 
   if(curthd == initproc)
     panic("init exiting");
@@ -704,10 +714,7 @@ thread_exit(void *retval)
 
   // Jump into the scheduler, never to return.
   curthd->state = ZOMBIE;
-
-  // For debugging
-  cprintf("thread_exit done\n");
-
+  cprintf("thread(%d) exit\n", curthd->tid);
   sched();
   panic("zombie exit");
 }
@@ -723,7 +730,7 @@ thread_join(thread_t thread, void **retval)
   struct proc *curproc = myproc();
 
   // For debugging
-  cprintf("thread_join\n");
+  cprintf("thread_join(%d)\n", (int)thread);
   
   acquire(&ptable.lock);
   for(;;){
@@ -769,7 +776,39 @@ thread_join(thread_t thread, void **retval)
     sleep(curproc, &ptable.lock);  //DOC: wait-sleep
   }
 
-  // TODO : return -1인 조건 더 따져보기 
+  release(&ptable.lock);
+  return -1;
+}
+
+// Kill and reap threads of process
+void
+killThreads(struct proc *p)
+{
+  struct proc *t;
+
+  acquire(&ptable.lock);
+  // kill threads of process
+  for(t = ptable.proc; t < &ptable.proc[NPROC]; t++){
+    if(t->isThread && t->parent->pid == p->pid){
+      // reap process resource
+      kfree(t->kstack);
+      t->kstack = 0;
+      t->pid = 0;
+      t->parent = 0;
+      t->name[0] = 0;
+      t->killed = 0;
+      t->state = UNUSED;
+      // reap thread resource
+      t->isThread = 0;
+      t->tid = 0;
+      t->arg = 0;
+      t->retval = 0;
+    }
+  }
+  // Set current process as a process
+  p->isThread = 0;
+
+  release(&ptable.lock);
 }
 
 //PAGEBREAK: 36

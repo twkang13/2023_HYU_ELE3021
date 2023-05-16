@@ -56,6 +56,7 @@ struct proc {
   int isThread;                // If isThread == 1, process is a thread.
   thread_t  tid;               // Thread ID
   int isMain;                  // If isMain == 1, thread is main thread.
+  thread_t  nextid;            // Next thread ID
   void *arg;                   // Argument for thread
   void *retval;                // Return value of thread
 };
