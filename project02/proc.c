@@ -250,6 +250,8 @@ exit(void)
     }
   }
 
+  // TODO : process(main thread)가 exit할때 child thread 모두 exit하도록 
+
   begin_op();
   iput(curproc->cwd);
   end_op();
@@ -576,7 +578,6 @@ int
 thread_create(thread_t *thread, void *(*start_routine)(void *), void *arg)
 {
   uint sp, ustack[2];
-  pde_t *oldpgdir;
   struct proc *nt;
   struct proc *p = myproc();
 
@@ -601,6 +602,7 @@ thread_create(thread_t *thread, void *(*start_routine)(void *), void *arg)
   nt->pgdir = p->pgdir;
   nt->sz = p->sz;
   sp = nt->sz;
+  *nt->tf = *p->tf;
 
   // Set thread information
   nt->isThread = 1;
@@ -610,7 +612,6 @@ thread_create(thread_t *thread, void *(*start_routine)(void *), void *arg)
   }
   *thread = ++p->threadnum;
   nt->parent = p;
-  nt->tf = p->tf;
 
   // Share pid of main thread
   if(!nt->isMain){
@@ -628,13 +629,11 @@ thread_create(thread_t *thread, void *(*start_routine)(void *), void *arg)
 
   sp -= 2*4;
   if(copyout(nt->pgdir, sp, ustack, 2*4) < 0){
-    freevm(nt->pgdir);
     release(&ptable.lock);
     return -1;
   }
 
   // Initialize thread state (Copy state of main thread)
-  nt->state = RUNNABLE;
   nt->tf->eax = 0;
   nt->tf->eip = (uint)start_routine;
   nt->tf->esp = sp;
@@ -646,14 +645,13 @@ thread_create(thread_t *thread, void *(*start_routine)(void *), void *arg)
 
   safestrcpy(nt->name, p->name, sizeof(p->name));
 
-  // Run thread
-  oldpgdir = nt->pgdir;
-  nt->state = RUNNING;
+  // Set thread RUNNBALE
+  nt->state = RUNNABLE;
   switchuvm(nt);
-  freevm(oldpgdir);
 
   // Thread is created
   release(&ptable.lock);
+  yield();
   return 0;
 }
 
@@ -666,6 +664,9 @@ thread_exit(void *retval)
   struct proc *curthd = myproc();
   struct proc *p;
   int fd;
+
+  // For debugging
+  cprintf("thread_exit\n");
 
   if(curthd == initproc)
     panic("init exiting");
@@ -704,6 +705,9 @@ thread_exit(void *retval)
   // Jump into the scheduler, never to return.
   curthd->state = ZOMBIE;
 
+  // For debugging
+  cprintf("thread_exit done\n");
+
   sched();
   panic("zombie exit");
 }
@@ -717,6 +721,9 @@ thread_join(thread_t thread, void **retval)
 {
   struct proc *t;
   struct proc *curproc = myproc();
+
+  // For debugging
+  cprintf("thread_join\n");
   
   acquire(&ptable.lock);
   for(;;){
@@ -743,6 +750,10 @@ thread_join(thread_t thread, void **retval)
         // Set return value and initialize retval
         *retval = t->retval;
         t->retval = 0;
+
+        // For debugging
+        cprintf("thread_join done\n");
+
         release(&ptable.lock);
         return 0;
       }

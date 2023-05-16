@@ -18,14 +18,19 @@ int main(int argc, char *argv[])
     printf(1, "Thread Test\n");
 
     for(int i = 0; i < NTHREAD; i++){
-        int fail = thread_create(&thread[i], (void *)thread_func, (void *)i);
+        int fail = thread_create(&thread[i], thread_func, (void *)i);
         if(fail){
-            printf(1, "thread(%d) : thread_create failed\n", i);
+            printf(1, "thread(%d) : thread_create failed\n", thread[i]);
             exit();
         }
         else{
-            printf(1, "thread(%d) : created\n", i);
+            printf(1, "thread(%d) : created\n", thread[i]);
         }
+        sleep(100);
+    }
+    // exit 안됨,, 디버깅 필요 
+    for(int i = 0; i < NTHREAD; i++){
+        thread_exit(&thread[i]);
     }
 
     printf(1, "Thread Test Done\n");
