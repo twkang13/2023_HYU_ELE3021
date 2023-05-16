@@ -608,10 +608,10 @@ thread_create(thread_t *thread, void *(*start_routine)(void *), void *arg)
   nt->pgdir = p->pgdir;
   nt->sz = p->sz;
   *nt->tf = *p->tf;
-
   // Set thread information
   nt->isThread = 1;
   if(p->threadnum == 0){
+    cprintf("main thread\n");
     p->isThread = 1;
     p->isMain = 1;
     p->nextid = 2;
@@ -626,6 +626,7 @@ thread_create(thread_t *thread, void *(*start_routine)(void *), void *arg)
   ++nt->parent->threadnum;
   nt->tid = nt->parent->nextid++;
   *thread = nt->tid;
+  cprintf("thread id : %d\n", *thread);
 
   // Share pid of main thread
   if(!nt->isMain){
@@ -665,6 +666,7 @@ thread_create(thread_t *thread, void *(*start_routine)(void *), void *arg)
 
   // Thread is created
   release(&ptable.lock);
+  yield();
   return 0;
 }
 
@@ -714,7 +716,6 @@ thread_exit(void *retval)
 
   // Jump into the scheduler, never to return.
   curthd->state = ZOMBIE;
-  cprintf("thread(%d) exit\n", curthd->tid);
   sched();
   panic("zombie exit");
 }
@@ -775,9 +776,6 @@ thread_join(thread_t thread, void **retval)
     // Wait for children to exit.  (See wakeup1 call in proc_exit.)
     sleep(curproc, &ptable.lock);  //DOC: wait-sleep
   }
-
-  release(&ptable.lock);
-  return -1;
 }
 
 // Kill and reap threads of process
