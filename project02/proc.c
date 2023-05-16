@@ -610,8 +610,7 @@ thread_create(thread_t *thread, void *(*start_routine)(void *), void *arg)
   *nt->tf = *p->tf;
   // Set thread information
   nt->isThread = 1;
-  if(p->threadnum == 0){
-    cprintf("main thread\n");
+  if(!p->isThread && p->threadnum == 0){
     p->isThread = 1;
     p->isMain = 1;
     p->nextid = 2;
@@ -626,7 +625,6 @@ thread_create(thread_t *thread, void *(*start_routine)(void *), void *arg)
   ++nt->parent->threadnum;
   nt->tid = nt->parent->nextid++;
   *thread = nt->tid;
-  cprintf("thread id : %d\n", *thread);
 
   // Share pid of main thread
   if(!nt->isMain){
@@ -729,21 +727,22 @@ thread_join(thread_t thread, void **retval)
 {
   struct proc *t;
   struct proc *curproc = myproc();
-
-  // For debugging
-  cprintf("thread_join(%d)\n", (int)thread);
   
   acquire(&ptable.lock);
   for(;;){
     // Scan through table looking for exited thread with tid "thread".
-    for(t = ptable.proc; t < &ptable.proc[NPROC] && t->isThread; t++){
-      if(t->pid != thread)
+    for(t = ptable.proc; t < &ptable.proc[NPROC]; t++){
+      if(!t->isThread)
         continue;
+      // TODO : tid "thread"인 경우, thread_join을 호출한 process가 thread의 parent인지 확인하기
+      if(t->tid != thread || t->parent->pid != curproc->pid)
+        continue;
+
       if(t->state == ZOMBIE){
         kfree(t->kstack);
         t->kstack = 0;
         // If terminated thread is a main thread, free page table of threads
-        if(t->parent->threadnum == 0)
+        if(t->isMain && t->threadnum == 0)
           freevm(t->pgdir);
         // Reaping process stuff
         t->pid = 0;
@@ -758,10 +757,6 @@ thread_join(thread_t thread, void **retval)
         // Set return value and initialize retval
         *retval = t->retval;
         t->retval = 0;
-
-        // For debugging
-        cprintf("thread_join done\n");
-
         release(&ptable.lock);
         return 0;
       }

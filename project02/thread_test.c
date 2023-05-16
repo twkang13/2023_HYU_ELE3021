@@ -23,10 +23,12 @@ int main(int argc, char *argv[])
             printf(1, "thread_create failed.\n");
             exit();
         }
-        sleep(100);
+        //sleep(100);
     }
     for(int i = 0; i < NTHREAD; i++){
-        thread_join(thread[i], 0);
+        int retval;
+        thread_join(thread[i], (void**)&retval);
+        printf(1, "thread joined : %d\n", retval);
     }
 
     printf(1, "Thread Test Done\n");
