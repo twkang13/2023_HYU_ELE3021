@@ -6,10 +6,12 @@
 #define NTHREAD 8
 
 thread_t thread[NTHREAD];
+int shared = 0;
 
 void *thread_func(void *arg)
 {
-    printf(1, "thread : %d\n", (int)arg);
+    shared += (int)arg;
+    printf(1, "thread : %d(%d)\n", shared, (int)arg);
     thread_exit(arg);
     return 0;
 }
@@ -23,7 +25,7 @@ int main(int argc, char *argv[])
             printf(1, "thread_create failed.\n");
             exit();
         }
-        //sleep(100);
+        sleep(100);
     }
     for(int i = 0; i < NTHREAD; i++){
         int retval;

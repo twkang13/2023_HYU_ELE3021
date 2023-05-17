@@ -582,7 +582,8 @@ plist()
 int
 thread_create(thread_t *thread, void *(*start_routine)(void *), void *arg)
 {
-  uint sp, ustack[2];
+  // Define guard page, user stack with page size(4KB)
+  uint sp, ustack[4];
   struct proc *nt;
   struct proc *p = myproc();
 
@@ -604,10 +605,10 @@ thread_create(thread_t *thread, void *(*start_routine)(void *), void *arg)
   sp = p->sz;
 
   // Share page table and size of process memory
-  // TODO : 자원 공유 확인하기
   nt->pgdir = p->pgdir;
   nt->sz = p->sz;
   *nt->tf = *p->tf;
+
   // Set thread information
   nt->isThread = 1;
   if(!p->isThread && p->threadnum == 0){
@@ -639,6 +640,8 @@ thread_create(thread_t *thread, void *(*start_routine)(void *), void *arg)
   // Initialize arguments for thread
   ustack[0] = 0xffffffff;  // fake return PC
   ustack[1] = (uint)arg;
+  ustack[2] = 0x0;
+  ustack[3] = 0x0;
 
   sp -= 2*4;
   if(copyout(nt->pgdir, sp, ustack, 2*4) < 0){
