@@ -222,6 +222,13 @@ fork(void)
   // Clear %eax so that fork returns 0 in the child.
   np->tf->eax = 0;
 
+  // Clear information for main thread
+  np->isThread = 0;
+  np->isMain = 0;
+  np->nextid = 0;
+  np->tid = 0;
+  np->threadnum = 0;
+
   for(i = 0; i < NOFILE; i++)
     if(curproc->ofile[i])
       np->ofile[i] = filedup(curproc->ofile[i]);
@@ -262,7 +269,9 @@ exit(void)
     }
   }
 
-  // TODO : process(main thread)가 exit할때 child thread 모두 exit하도록 
+  // Exit all threads of main thread when main thread exit
+  if(curproc->isThread && curproc->isMain)
+    killThreads(curproc);
 
   begin_op();
   iput(curproc->cwd);
@@ -503,15 +512,29 @@ kill(int pid)
 {
   struct proc *p;
 
+  acquire(&ptable.lock);
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     if(p->pid == pid){
       p->killed = 1;
       // Kill all thread of process if one of them is killed.
       if(p->isThread){
+        release(&ptable.lock);
+
+        struct proc *main;
         if(p->isMain)
-          killThreads(p);
+          main = p;
         else
-          killThreads(p->parent);
+          main = p->parent;
+        killThreads(main);
+
+        // Initialize main thread
+        main->killed = 1;
+        main->isThread = 0;
+        main->isMain = 0;
+        main->nextid = 0;
+        main->tid = 0;
+
+        acquire(&ptable.lock);
       }
       // Wake process from sleep if necessary.
       if(p->state == SLEEPING)
@@ -585,7 +608,9 @@ plist()
 }
 
 // THREAD
+
 // Create thread
+// Run on main thread
 // Return 0 if thread is succssefully created
 // Return -1 if there is an error
 // Modified code from fork() and exec()
@@ -627,25 +652,20 @@ thread_create(thread_t *thread, void *(*start_routine)(void *), void *arg)
     p->nextid = 2;
     p->tid = 1;
   }
-  if(p->isMain)
+  // Set main thread and share pid of main thread
+  if(p->isMain){
     nt->parent = p;
-  else
+    nt->pid = p->pid;
+  }
+  else{
     nt->parent = p->parent;
+    nt->pid = nt->parent->pid;
+  }
 
   // Set thread id
   ++nt->parent->threadnum;
   nt->tid = nt->parent->nextid++;
   *thread = nt->tid;
-
-  // Share pid of main thread
-  if(!nt->isMain){
-    for(struct proc *t = ptable.proc; t < &ptable.proc[NPROC] && t->isThread; t++){
-      if(t->isMain && nt->parent->pid == t->pid){
-        nt->pid = t->pid;
-        break;
-      }
-    }
-  }
 
   // Initialize arguments for thread
   ustack[0] = 0xffffffff;  // fake return PC
@@ -732,6 +752,7 @@ thread_exit(void *retval)
 }
 
 // Join thread
+// Run on main thread
 // Return 0 if thread is succssefully joined
 // Return -1 if there is an error
 // Modified code from wait()
@@ -747,16 +768,13 @@ thread_join(thread_t thread, void **retval)
     for(t = ptable.proc; t < &ptable.proc[NPROC]; t++){
       if(!t->isThread)
         continue;
-      // TODO : tid "thread"인 경우, thread_join을 호출한 process가 thread의 parent인지 확인하기
+      // Check whether the process who called join is a parent of thread with tid "thread"
       if(t->tid != thread || t->parent->pid != curproc->pid)
         continue;
 
       if(t->state == ZOMBIE){
         kfree(t->kstack);
         t->kstack = 0;
-        // If terminated thread is a main thread, free page table of threads
-        if(t->isMain && t->threadnum == 0)
-          freevm(t->pgdir);
         // Reaping process stuff
         t->pid = 0;
         t->parent = 0;
@@ -770,6 +788,14 @@ thread_join(thread_t thread, void **retval)
         // Set return value and initialize retval
         *retval = t->retval;
         t->retval = 0;
+        
+        // If there is no thread in process, initialize main thread to process
+        if(curproc->threadnum == 0){
+          curproc->isThread = 0;
+          curproc->isMain = 0;
+          curproc->nextid = 0;
+          curproc->tid = 0;
+        }
         release(&ptable.lock);
         return 0;
       }
@@ -809,11 +835,10 @@ killThreads(struct proc *p)
       t->tid = 0;
       t->arg = 0;
       t->retval = 0;
+      // Decrement the number of threads in process
+      --p->threadnum;
     }
   }
-  // Set current process as a process
-  p->isThread = 0;
-
   release(&ptable.lock);
 }
 
@@ -847,7 +872,7 @@ procdump(void)
     cprintf("%d %s %s", p->pid, state, p->name);
     
     if(p->isThread)
-      cprintf(" (thread %d)", p->tid);
+      cprintf(" (thread %d of %d)", p->tid, p->pid);
 
     if(p->state == SLEEPING){
       getcallerpcs((uint*)p->context->ebp+2, pc);
