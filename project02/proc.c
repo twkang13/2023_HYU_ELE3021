@@ -162,21 +162,34 @@ growproc(int n)
 {
   uint sz;
   struct proc *curproc = myproc();
+  struct proc *proc = curproc;
 
-  sz = curproc->sz;
+  acquire(&ptable.lock);
+
+  // allocate threads address without addressing
+  if(curproc->isThread && !curproc->isMain)
+    proc = curproc->parent;
+
+  sz = proc->sz;
   if(n > 0){
     // cannot grow memory if n is bigger than memory limit
-    if(0 < curproc->memlim && curproc->memlim < sz + n)
+    if(0 < proc->memlim && proc->memlim < sz + n){
+      release(&ptable.lock);
       return -1;
-
-    if((sz = allocuvm(curproc->pgdir, sz, sz + n)) == 0)
+    }
+    if((sz = allocuvm(proc->pgdir, sz, sz + n)) == 0){
+      release(&ptable.lock);
       return -1;
+    }
   } else if(n < 0){
-    if((sz = deallocuvm(curproc->pgdir, sz, sz + n)) == 0)
+    if((sz = deallocuvm(proc->pgdir, sz, sz + n)) == 0){
+      release(&ptable.lock);
       return -1;
+    }
   }
-  curproc->sz = sz;
+  proc->sz = sz;
   switchuvm(curproc);
+  release(&ptable.lock);
   return 0;
 }
 
@@ -213,8 +226,6 @@ fork(void)
     if(curproc->ofile[i])
       np->ofile[i] = filedup(curproc->ofile[i]);
   np->cwd = idup(curproc->cwd);
-
-  // TODO : thread의 경우 복사되는 데이터 확인 
 
   safestrcpy(np->name, curproc->name, sizeof(curproc->name));
 
@@ -574,7 +585,6 @@ plist()
 }
 
 // THREAD
-// TODO : thread.c로 분리
 // Create thread
 // Return 0 if thread is succssefully created
 // Return -1 if there is an error
