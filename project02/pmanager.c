@@ -42,7 +42,12 @@ main(int argc, char *argv[])
         }
         else if(!strcmp(arg[0], "execute") && argNum == 3){
             // path = arg[1]    stacksize = arg[2]
-            exec2(arg[1], argv, atoi(arg[2]));
+            int pid = fork();
+            printf(1, "stacksize : %d\n", atoi(arg[2]));
+            if(pid == 0){
+                exec2(arg[1], argv, atoi(arg[2]));
+                exit();
+            }
         }
         else if(!strcmp(arg[0], "memlim") && argNum == 3){
             // pid = arg[1]     limit = arg[2]

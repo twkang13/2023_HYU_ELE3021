@@ -30,9 +30,21 @@ exec(char *path, char **argv)
   ilock(ip);
   pgdir = 0;
 
-  // TODO : 기존 process의 thread 정리
-  if(curproc->isThread && curproc->isMain)
-    killThreads(curproc);
+  // Clear all threads of the main thread
+  if(curproc->isThread){
+    cprintf("kill threads\n");
+    struct proc *main;
+
+    if(curproc->isMain)
+      main = curproc;
+    else
+      main = curproc->parent;
+
+    cprintf("main: %d\n", main->pid);
+    killThreads(main);
+    cprintf("kill threads done\n");
+    curproc = main;
+  }
 
   // Check ELF header
   if(readi(ip, (char*)&elf, 0, sizeof(elf)) != sizeof(elf))
@@ -174,15 +186,14 @@ exec2(char *path, char **argv, int stacksize)
   // Allocate stack pages and a guard page at the next page boundary.
   // Make the first inaccessible.  Use the second as the user stack.
   sz = PGROUNDUP(sz);
-  // If stacksize is out of range, error
-  if(stacksize < 1 || 100 < stacksize)
-    goto bad;
   // If stacksize is too large, error
-  if(curproc->sz + stacksize*PGSIZE > curproc->memlim)
+  if(curproc->memlim > 0 && curproc->sz + stacksize*PGSIZE > curproc->memlim){
+    cprintf("exec2: fail, too large stacksize\n");
     goto bad;
-    
+  }
+  
+  ++stacksize;
   // Allocate stack pages
-  // TODO : segfault test
   if((sz = allocuvm(pgdir, sz, sz + stacksize*PGSIZE)) == 0)
     goto bad;
   // Allocate the guard page

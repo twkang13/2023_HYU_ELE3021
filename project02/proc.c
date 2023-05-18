@@ -529,10 +529,6 @@ kill(int pid)
 
         // Initialize main thread
         main->killed = 1;
-        main->isThread = 0;
-        main->isMain = 0;
-        main->nextid = 0;
-        main->tid = 0;
 
         acquire(&ptable.lock);
       }
@@ -593,8 +589,8 @@ plist()
 
   acquire(&ptable.lock);
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-    if(p->state == RUNNING || p->state == RUNNABLE){
-      cprintf("name : %s, pid : %d, allocated memory : %d, ", p->name, p->pid, p->sz);
+    if(p->state == RUNNING || p->state == RUNNABLE || p->state == SLEEPING){
+      cprintf("pid : %d, name : %s, allocated memory : %d, ", p->pid, p->name, p->sz);
 
       if(p->memlim)
         cprintf("memory limit : %d\n", p->memlim);
@@ -814,15 +810,18 @@ thread_join(thread_t thread, void **retval)
 
 // Kill and reap threads of process
 void
-killThreads(struct proc *p)
+killThreads(struct proc *main)
 {
   struct proc *t;
 
   acquire(&ptable.lock);
-  // kill threads of process
+
+  // kill threads of main thread
   for(t = ptable.proc; t < &ptable.proc[NPROC]; t++){
-    if(t->isThread && t->parent->pid == p->pid){
+    if(t->isThread && t->parent->pid == main->pid){
+      cprintf("killing...(thread %d of %d)\n", t->tid, t->pid);
       // reap process resource
+      // TODO : kfree시 unexpected trap 14 뜨는 문제 해결 필요 
       kfree(t->kstack);
       t->kstack = 0;
       t->pid = 0;
@@ -836,9 +835,17 @@ killThreads(struct proc *p)
       t->arg = 0;
       t->retval = 0;
       // Decrement the number of threads in process
-      --p->threadnum;
+      --main->threadnum;
+      cprintf("killed (%d)\n", t->tid);
     }
   }
+
+  // Initialize main thread
+  main->isThread = 0;
+  main->isMain = 0;
+  main->nextid = 0;
+  main->tid = 0;
+
   release(&ptable.lock);
 }
 
@@ -873,6 +880,8 @@ procdump(void)
     
     if(p->isThread)
       cprintf(" (thread %d of %d)", p->tid, p->pid);
+    if(p->isMain)
+      cprintf(" (main)");
 
     if(p->state == SLEEPING){
       getcallerpcs((uint*)p->context->ebp+2, pc);
