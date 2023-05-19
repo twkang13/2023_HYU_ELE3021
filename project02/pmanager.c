@@ -4,6 +4,9 @@
 
 #define MAXBUF 100
 
+void panic(char*);
+int fork1(void);
+
 int
 main(int argc, char *argv[])
 {
@@ -18,7 +21,7 @@ main(int argc, char *argv[])
         // Pares arguments - arg[0] : command, arg[1] : argument 1, arg[2] : argument 2
         char arg[3][51] = {0, };
         int argNum = 0, len = (int)strlen(buffer);
-    
+        // TODO : buffer[len]의 값 확인 
         for(int i = 0, j = 0; i <= len; i++, j++){
             if(buffer[i] == '\n' || buffer[i] == 32){
                 arg[argNum][j] = '\0';
@@ -28,7 +31,7 @@ main(int argc, char *argv[])
             else
                 arg[argNum][j] = buffer[i];
         }
-
+        
         if(!strcmp(arg[0], "list") && argNum == 1){
             if(plist() < 0)
                 printf(1, "ERROR : list failed.\n");
@@ -42,12 +45,12 @@ main(int argc, char *argv[])
         }
         else if(!strcmp(arg[0], "execute") && argNum == 3){
             // path = arg[1]    stacksize = arg[2]
-            int pid = fork();
-            printf(1, "stacksize : %d\n", atoi(arg[2]));
-            if(pid == 0){
+            if(fork1() == 0){
                 exec2(arg[1], argv, atoi(arg[2]));
                 exit();
             }
+            // TODO : background 실행 구현
+            continue;
         }
         else if(!strcmp(arg[0], "memlim") && argNum == 3){
             // pid = arg[1]     limit = arg[2]
@@ -66,5 +69,23 @@ main(int argc, char *argv[])
         }
     }
 
-    return 0;
+    exit();
+}
+
+void
+panic(char *s)
+{
+  printf(2, "%s\n", s);
+  exit();
+}
+
+int
+fork1(void)
+{
+  int pid;
+
+  pid = fork();
+  if(pid == -1)
+    panic("fork");
+  return pid;
 }

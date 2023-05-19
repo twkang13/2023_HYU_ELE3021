@@ -41,9 +41,15 @@ exec(char *path, char **argv)
       main = curproc->parent;
 
     cprintf("main: %d\n", main->pid);
+    // 현재 실행중인 thread의 kernel stack이 free돼서 문제가 발생하는거 같음
+    // TODO : 현재 실행중인 thread를 main thread로 변경하기.. scheduler 참고 
+    //        main thread는 남겨놓고 exec()를 실행시킨 thread를 제외한 모든 thread를 다 죽여버릴까..
+    //        thread에 exec field 추가
+    curproc = main;
+    switchuvm(main);
+
     killThreads(main);
     cprintf("kill threads done\n");
-    curproc = main;
   }
 
   // Check ELF header
@@ -192,6 +198,7 @@ exec2(char *path, char **argv, int stacksize)
     goto bad;
   }
   
+  // stacksize * stack pages + guard page
   ++stacksize;
   // Allocate stack pages
   if((sz = allocuvm(pgdir, sz, sz + stacksize*PGSIZE)) == 0)

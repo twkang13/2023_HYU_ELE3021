@@ -8,6 +8,7 @@
         "x86.h": "c",
         "spinlock.h": "c",
         "proc.h": "c",
-        "types.h": "c"
+        "types.h": "c",
+        "date.h": "c"
     }
 }

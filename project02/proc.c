@@ -589,7 +589,7 @@ plist()
 
   acquire(&ptable.lock);
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-    if(p->state == RUNNING || p->state == RUNNABLE || p->state == SLEEPING){
+    if(p->state == RUNNING || p->state == RUNNABLE){
       cprintf("pid : %d, name : %s, allocated memory : %d, ", p->pid, p->name, p->sz);
 
       if(p->memlim)
@@ -821,7 +821,7 @@ killThreads(struct proc *main)
     if(t->isThread && t->parent->pid == main->pid){
       cprintf("killing...(thread %d of %d)\n", t->tid, t->pid);
       // reap process resource
-      // TODO : kfree시 unexpected trap 14 뜨는 문제 해결 필요 
+      // TODO : kfree시 unexpected trap 14 뜨는 문제 해결 필요.. 현재 실행되고 있는 thread의 kernel stack이 free되는 문제 발생 
       kfree(t->kstack);
       t->kstack = 0;
       t->pid = 0;
