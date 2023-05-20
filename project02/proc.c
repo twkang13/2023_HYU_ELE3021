@@ -270,8 +270,16 @@ exit(void)
   }
 
   // Exit all threads of main thread when main thread exit
-  if(curproc->isThread && curproc->isMain)
+  if(curproc->isThread && curproc->isMain){
     killThreads(curproc);
+
+    // Initialize main thread
+  curproc->isThread = 0;
+  curproc->isMain = 0;
+  curproc->nextid = 0;
+  curproc->tid = 0;
+  curproc->threadnum = 0;
+  }
 
   begin_op();
   iput(curproc->cwd);
@@ -526,6 +534,13 @@ kill(int pid)
         else
           main = p->parent;
         killThreads(main);
+
+        // Initialize main thread
+        main->isThread = 0;
+        main->isMain = 0;
+        main->nextid = 0;
+        main->tid = 0;
+        main->threadnum = 0;
 
         // Initialize main thread
         main->killed = 1;
@@ -810,21 +825,25 @@ thread_join(thread_t thread, void **retval)
 
 // Kill and reap threads of process
 void
-killThreads(struct proc *main)
+killThreads(struct proc *thread)
 {
   struct proc *t;
 
   acquire(&ptable.lock);
 
-  // kill threads of main thread
   for(t = ptable.proc; t < &ptable.proc[NPROC]; t++){
-    if(t->isThread && t->parent->pid == main->pid){
-      cprintf("killing...(thread %d of %d)\n", t->tid, t->pid);
+    if(!t->isThread)
+      continue;
+    // kill threads of main thread if argument is a main thread
+    // kill threads of main thread except a thread which called killThread then kill main thread
+    if((thread->isMain && t->parent->pid == thread->pid) ||  
+        (!thread->isMain && t->pid == thread->pid && t->tid != thread->tid)){
       // reap process resource
-      // TODO : kfree시 unexpected trap 14 뜨는 문제 해결 필요.. 현재 실행되고 있는 thread의 kernel stack이 free되는 문제 발생 
       kfree(t->kstack);
       t->kstack = 0;
       t->pid = 0;
+      if(!thread->isMain)
+        thread->parent = t->parent;
       t->parent = 0;
       t->name[0] = 0;
       t->killed = 0;
@@ -834,17 +853,8 @@ killThreads(struct proc *main)
       t->tid = 0;
       t->arg = 0;
       t->retval = 0;
-      // Decrement the number of threads in process
-      --main->threadnum;
-      cprintf("killed (%d)\n", t->tid);
     }
   }
-
-  // Initialize main thread
-  main->isThread = 0;
-  main->isMain = 0;
-  main->nextid = 0;
-  main->tid = 0;
 
   release(&ptable.lock);
 }

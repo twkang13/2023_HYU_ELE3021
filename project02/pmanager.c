@@ -7,7 +7,7 @@
 void panic(char*);
 int fork1(void);
 int getcmd(char*, int);
-void runcmd(char*, int, char*[]);
+void runcmd(char*);
 
 int
 main(int argc, char *argv[])
@@ -16,11 +16,11 @@ main(int argc, char *argv[])
 
     while(getcmd(buffer, MAXBUF) >= 0){
         // exit
-        if(buffer[0] == 'e' && buffer[1] == 'x' && buffer[2] == 'i' && buffer[3] == 't')
+        if(buffer[0] == 'e' && buffer[1] == 'x' && buffer[2] == 'i' && buffer[3] == 't' && buffer[4] == '\n')
             break;
 
         if(fork1() == 0)
-            runcmd(buffer, argc, argv);
+            runcmd(buffer);
         wait();
     }
 
@@ -59,7 +59,7 @@ getcmd(char *buf, int nbuf)
 
 // Run pmanager
 void
-runcmd(char *buffer, int argc, char *argv[])
+runcmd(char *buffer)
 {
     // Pares arguments - arg[0] : command, arg[1] : argument 1, arg[2] : argument 2
     char arg[3][51] = {0, };
@@ -88,11 +88,18 @@ runcmd(char *buffer, int argc, char *argv[])
     }
     else if(!strcmp(arg[0], "execute") && argNum == 3){
         // path = arg[1]    stacksize = arg[2]
-        if(fork1() == 0){
-            exec2(arg[1], argv, atoi(arg[2]));
-            exit();
+        int pid = fork1();
+
+        if(pid == 0){
+            // Set arguments
+            char *args[100] = {0, };
+            memset(args, 0, sizeof(args));
+            strcpy(args[0], arg[1]);
+
+            exec2(arg[1], args, atoi(arg[2]));
         }
-        // TODO : background 실행 구현
+        else if (pid < 0)
+            printf(1, "ERROR : execute failed.\n");
     }
     else if(!strcmp(arg[0], "memlim") && argNum == 3){
         // pid = arg[1]     limit = arg[2]

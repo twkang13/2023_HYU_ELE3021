@@ -30,27 +30,11 @@ exec(char *path, char **argv)
   ilock(ip);
   pgdir = 0;
 
-  // Clear all threads of the main thread
-  if(curproc->isThread){
-    cprintf("kill threads\n");
-    struct proc *main;
+  // Clear all threads of the main thread except current thread
+  if(curproc->isThread)
+    killThreads(curproc);
 
-    if(curproc->isMain)
-      main = curproc;
-    else
-      main = curproc->parent;
-
-    cprintf("main: %d\n", main->pid);
-    // 현재 실행중인 thread의 kernel stack이 free돼서 문제가 발생하는거 같음
-    // TODO : 현재 실행중인 thread를 main thread로 변경하기.. scheduler 참고 
-    //        main thread는 남겨놓고 exec()를 실행시킨 thread를 제외한 모든 thread를 다 죽여버릴까..
-    //        thread에 exec field 추가
-    curproc = main;
-    switchuvm(main);
-
-    killThreads(main);
-    cprintf("kill threads done\n");
-  }
+  // TODO : handle zombie thread
 
   // Check ELF header
   if(readi(ip, (char*)&elf, 0, sizeof(elf)) != sizeof(elf))
