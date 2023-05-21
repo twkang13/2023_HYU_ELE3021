@@ -842,8 +842,11 @@ killThreads(struct proc *thread)
       kfree(t->kstack);
       t->kstack = 0;
       t->pid = 0;
-      if(!thread->isMain && t->isMain)
+      if(!thread->isMain && t->isMain){
         thread->parent = t->parent;
+        t->isMain = 0;
+        t->threadnum = 0;
+      }
       t->parent = 0;
       t->name[0] = 0;
       t->killed = 0;
