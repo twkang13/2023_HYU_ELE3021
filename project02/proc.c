@@ -269,16 +269,16 @@ exit(void)
     }
   }
 
-  // Exit all threads of main thread when main thread exit
-  if(curproc->isThread && curproc->isMain){
+  // Exit all threads of calling thread when thread exit
+  if(curproc->isThread){
     killThreads(curproc);
 
-    // Initialize main thread
-  curproc->isThread = 0;
-  curproc->isMain = 0;
-  curproc->nextid = 0;
-  curproc->tid = 0;
-  curproc->threadnum = 0;
+    // Initialize calling thread
+    curproc->isThread = 0;
+    curproc->isMain = 0;
+    curproc->nextid = 0;
+    curproc->tid = 0;
+    curproc->threadnum = 0;
   }
 
   begin_op();
@@ -542,7 +542,6 @@ kill(int pid)
         main->tid = 0;
         main->threadnum = 0;
 
-        // Initialize main thread
         main->killed = 1;
 
         acquire(&ptable.lock);
@@ -684,8 +683,8 @@ thread_create(thread_t *thread, void *(*start_routine)(void *), void *arg)
   ustack[2] = 0x0;
   ustack[3] = 0x0;
 
-  sp -= 2*4;
-  if(copyout(nt->pgdir, sp, ustack, 2*4) < 0){
+  sp -= 16;
+  if(copyout(nt->pgdir, sp, ustack, 16) < 0){
     release(&ptable.lock);
     return -1;
   }
@@ -824,6 +823,7 @@ thread_join(thread_t thread, void **retval)
 }
 
 // Kill and reap threads of process
+// TODO : killThreads() 실행 후 zombie의 reaping이 안되는 문제 해결 
 void
 killThreads(struct proc *thread)
 {
@@ -842,7 +842,7 @@ killThreads(struct proc *thread)
       kfree(t->kstack);
       t->kstack = 0;
       t->pid = 0;
-      if(!thread->isMain)
+      if(!thread->isMain && t->isMain)
         thread->parent = t->parent;
       t->parent = 0;
       t->name[0] = 0;
