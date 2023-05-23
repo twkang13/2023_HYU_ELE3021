@@ -162,13 +162,15 @@ growproc(int n)
 {
   uint sz;
   struct proc *curproc = myproc();
-  struct proc *proc = curproc;
+  struct proc *proc = 0;
 
   acquire(&ptable.lock);
 
   // allocate threads address without addressing
   if(curproc->isThread && !curproc->isMain)
     proc = curproc->parent;
+  else
+    proc = curproc;
 
   sz = proc->sz;
   if(n > 0){
@@ -188,6 +190,15 @@ growproc(int n)
     }
   }
   proc->sz = sz;
+
+  for(struct proc *t = ptable.proc; t < &ptable.proc[NPROC]; t++){
+    if(proc->isThread && proc->isMain && t->isThread && t->pid == proc->tid){
+      cprintf("update memory of thread %d(%d)\n", t->tid, t->pid);
+      t->sz = proc->sz;
+      t->pgdir = proc->pgdir;
+    }
+  }
+
   switchuvm(curproc);
   release(&ptable.lock);
   return 0;
@@ -577,14 +588,13 @@ setmemorylimit(int pid, int limit)
 
   // When process with pid "pid" does not exist
   // or limit is an invalid value
-  // or limit is not a PGSIZE(4KB) multiple, ERROR
   int memlim = 0;
   if(p->memlim)
     p->sz < p->memlim ? (memlim = p->sz) : (memlim = p->memlim);
   else
     memlim = p->sz;
 
-  if(!exist || limit < 0 || limit <= memlim || limit % PGSIZE != 0){
+  if(!exist || limit < 0 || limit <= memlim){
     release(&ptable.lock);
     return -1;
   }
@@ -604,7 +614,9 @@ plist()
   acquire(&ptable.lock);
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     if(p->state == RUNNING || p->state == RUNNABLE){
-      cprintf("pid : %d, name : %s, allocated memory : %d, ", p->pid, p->name, p->sz);
+      strncpy(p->name, "list", sizeof(p->name));
+
+      cprintf("pid : %d, name : %s, stack pages : %d, allocated memory : %d, ", p->pid, p->name, p->sz / PGSIZE, p->sz);
 
       if(p->memlim)
         cprintf("memory limit : %d\n", p->memlim);
@@ -620,15 +632,14 @@ plist()
 // THREAD
 
 // Create thread
-// Run on main thread
 // Return 0 if thread is succssefully created
 // Return -1 if there is an error
 // Modified code from fork() and exec()
 int
 thread_create(thread_t *thread, void *(*start_routine)(void *), void *arg)
 {
-  // Define guard page, user stack with page size(4KB)
-  uint sp, ustack[4];
+  // Define guard page, user stack with page size
+  uint sp, ustack[2];
   struct proc *nt;
   struct proc *p = myproc();
 
@@ -638,6 +649,10 @@ thread_create(thread_t *thread, void *(*start_routine)(void *), void *arg)
   }
 
   acquire(&ptable.lock);
+
+  // Find main thread
+  if(p->isThread && !p->isMain)
+    p = p->parent;
 
   // Allocate two pages for thread at the next page boundary.
   // Make the first inaccessible.  Use the second as the user stack.
@@ -680,11 +695,9 @@ thread_create(thread_t *thread, void *(*start_routine)(void *), void *arg)
   // Initialize arguments for thread
   ustack[0] = 0xffffffff;  // fake return PC
   ustack[1] = (uint)arg;
-  ustack[2] = 0x0;
-  ustack[3] = 0x0;
 
-  sp -= 16;
-  if(copyout(nt->pgdir, sp, ustack, 16) < 0){
+  sp -= 8;
+  if(copyout(nt->pgdir, sp, ustack, 8) < 0){
     release(&ptable.lock);
     return -1;
   }
@@ -762,7 +775,6 @@ thread_exit(void *retval)
 }
 
 // Join thread
-// Run on main thread
 // Return 0 if thread is succssefully joined
 // Return -1 if there is an error
 // Modified code from wait()
@@ -773,6 +785,11 @@ thread_join(thread_t thread, void **retval)
   struct proc *curproc = myproc();
   
   acquire(&ptable.lock);
+
+  // Find main thread
+  if(curproc->isThread && !curproc->isMain)
+    curproc = curproc->parent;
+
   for(;;){
     // Scan through table looking for exited thread with tid "thread".
     for(t = ptable.proc; t < &ptable.proc[NPROC]; t++){
@@ -823,7 +840,6 @@ thread_join(thread_t thread, void **retval)
 }
 
 // Kill and reap threads of process
-// TODO : killThreads() 실행 후 zombie의 reaping이 안되는 문제 해결 
 void
 killThreads(struct proc *thread)
 {
@@ -842,6 +858,7 @@ killThreads(struct proc *thread)
       kfree(t->kstack);
       t->kstack = 0;
       t->pid = 0;
+      // reaping main thread if current thread is not a main thread
       if(!thread->isMain && t->isMain){
         thread->parent = t->parent;
         t->isMain = 0;

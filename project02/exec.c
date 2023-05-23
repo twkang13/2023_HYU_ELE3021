@@ -34,8 +34,6 @@ exec(char *path, char **argv)
   if(curproc->isThread)
     killThreads(curproc);
 
-  // TODO : handle zombie thread
-
   // Check ELF header
   if(readi(ip, (char*)&elf, 0, sizeof(elf)) != sizeof(elf))
     goto bad;

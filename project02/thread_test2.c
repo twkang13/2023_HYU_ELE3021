@@ -37,8 +37,6 @@ int main(int argc, char *argv[])
 
     printf(1, "Basic Thread Test Done\n\n");
 
-    thread_exit(0);
-
     printf(1, "2. Fork Test\n");
 
     shared = 0;
