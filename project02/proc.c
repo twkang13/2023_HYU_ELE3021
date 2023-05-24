@@ -227,7 +227,11 @@ fork(void)
     return -1;
   }
   np->sz = curproc->sz;
-  np->parent = curproc;
+  // Set new process's(or thread's) parent
+  if(curproc->isThread && !curproc->isMain)
+    np->parent = curproc->parent;
+  else
+    np->parent = curproc;
   *np->tf = *curproc->tf;
 
   // Clear %eax so that fork returns 0 in the child.
@@ -614,9 +618,17 @@ plist()
   acquire(&ptable.lock);
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     if(p->state == RUNNING || p->state == RUNNABLE){
-      strncpy(p->name, "list", sizeof(p->name));
+      // Do not print an information of threads
+      if(p->isThread && !p->isMain)
+        continue;
 
-      cprintf("pid : %d, name : %s, stack pages : %d, allocated memory : %d, ", p->pid, p->name, p->sz / PGSIZE, p->sz);
+      // The number of stack pages of process
+      // TODO : thread가 돌아갈때 list test 
+      uint stackpages = p->sz/PGSIZE - 2;
+      if(p->isThread && p->isMain)
+        stackpages -= (p->threadnum);
+
+      cprintf("pid : %d, name : %s, stack pages : %d, allocated memory : %d, ", p->pid, p->name, stackpages, p->sz);
 
       if(p->memlim)
         cprintf("memory limit : %d\n", p->memlim);
@@ -723,7 +735,6 @@ thread_create(thread_t *thread, void *(*start_routine)(void *), void *arg)
   yield();
   return 0;
 }
-
 
 // Exit thread
 // Modified code from exit()
@@ -906,7 +917,7 @@ procdump(void)
       state = states[p->state];
     else
       state = "???";
-    cprintf("%d %s %s", p->pid, state, p->name);
+    cprintf("%d %s %s %d", p->pid, state, p->name, p->sz/PGSIZE-2);
     
     if(p->isThread)
       cprintf(" (thread %d of %d)", p->tid, p->pid);

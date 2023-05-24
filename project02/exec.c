@@ -171,16 +171,23 @@ exec2(char *path, char **argv, int stacksize)
   end_op();
   ip = 0;
 
-  // Allocate stack pages and a guard page at the next page boundary.
-  // Make the first inaccessible.  Use the second as the user stack.
-  sz = PGROUNDUP(sz);
+  // If stack size is 0, error
+  if(stacksize == 0){
+    cprintf("exec2: fail, stacksize if 0\n");
+    goto bad;
+  }
+
   // If stacksize is too large, error
-  if(curproc->memlim > 0 && curproc->sz + stacksize*PGSIZE > curproc->memlim){
+  if(curproc->memlim > 0 && curproc->sz + stacksize*PGSIZE> curproc->memlim){
     cprintf("exec2: fail, too large stacksize\n");
     goto bad;
   }
+
+  // Allocate stack pages and a guard page at the next page boundary.
+  // Make the first inaccessible.  Use the second as the user stack.
+  sz = PGROUNDUP(sz);
   
-  // stacksize * stack pages + guard page
+  // Increment stacksize for guard page
   ++stacksize;
   // Allocate stack pages
   if((sz = allocuvm(pgdir, sz, sz + stacksize*PGSIZE)) == 0)
