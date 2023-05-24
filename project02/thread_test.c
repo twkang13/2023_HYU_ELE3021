@@ -1,80 +1,166 @@
-// Test code for thread
 #include "types.h"
 #include "stat.h"
 #include "user.h"
 
-#define NTHREAD 5
+#define NUM_THREAD 5
 
-thread_t thread[NTHREAD];
-int shared = 0;
-int sb = 0;
+int status;
+thread_t thread[NUM_THREAD];
+int expected[NUM_THREAD];
 
-void *thread_func(void *arg)
+void failed()
 {
-    shared += (int)arg;
-    printf(1, "thread : %d(%d)\n", shared, (int)arg);
-    if(sb) sbrk(4096*((int)arg+1));
-    thread_exit(arg);
-    return 0;
+  printf(1, "Test failed!\n");
+  exit();
+}
+
+void *thread_basic(void *arg)
+{
+  int val = (int)arg;
+  printf(1, "Thread %d start\n", val);
+  if (val == 1) {
+    sleep(200);
+    status = 1;
+  }
+  printf(1, "Thread %d end\n", val);
+  thread_exit(arg);
+  return 0;
+}
+
+void *thread_fork(void *arg)
+{
+  int val = (int)arg;
+  int pid;
+
+  printf(1, "Thread %d start\n", val);
+  pid = fork();
+  if (pid < 0) {
+    printf(1, "Fork error on thread %d\n", val);
+    failed();
+  }
+
+  if (pid == 0) {
+    printf(1, "Child of thread %d start\n", val);
+    sleep(100);
+    status = 3;
+    printf(1, "Child of thread %d end\n", val);
+    exit();
+  }
+  else {
+    status = 2;
+    if (wait() == -1) {
+      printf(1, "Thread %d lost their child\n", val);
+      failed();
+    }
+  }
+  printf(1, "Thread %d end\n", val);
+  thread_exit(arg);
+  return 0;
+}
+
+int *ptr;
+
+void *thread_sbrk(void *arg)
+{
+  int val = (int)arg;
+  printf(1, "Thread %d start\n", val);
+
+  int i, j;
+
+  if (val == 0) {
+    ptr = (int *)malloc(65536);
+    sleep(100);
+    free(ptr);
+    ptr = 0;
+  }
+  else {
+    while (ptr == 0)
+      sleep(1);
+    for (i = 0; i < 16384; i++)
+      ptr[i] = val;
+  }
+
+  while (ptr != 0)
+    sleep(1);
+
+  for (i = 0; i < 2000; i++) {
+    int *p = (int *)malloc(65536);
+    for (j = 0; j < 16384; j++)
+      p[j] = val;
+    for (j = 0; j < 16384; j++) {
+      if (p[j] != val) {
+        printf(1, "Thread %d found %d\n", val, p[j]);
+        failed();
+      }
+    }
+    free(p);
+  }
+
+  thread_exit(arg);
+  return 0;
+}
+void create_all(int n, void *(*entry)(void *))
+{
+  int i;
+  for (i = 0; i < n; i++) {
+    if (thread_create(&thread[i], entry, (void *)i) != 0) {
+      printf(1, "Error creating thread %d\n", i);
+      failed();
+    }
+  }
+}
+
+void join_all(int n)
+{
+  int i, retval;
+  for (i = 0; i < n; i++) {
+    if (thread_join(thread[i], (void **)&retval) != 0) {
+      printf(1, "Error joining thread %d\n", i);
+      failed();
+    }
+    if (retval != expected[i]) {
+      printf(1, "Thread %d returned %d, but expected %d\n", i, retval, expected[i]);
+      failed();
+    }
+  }
 }
 
 int main(int argc, char *argv[])
 {
-    printf(1, "1. Basic Thread Test\n");
+  int i;
+  for (i = 0; i < NUM_THREAD; i++)
+    expected[i] = i;
 
-    for(int i = 0; i < NTHREAD; i++){
-        if(thread_create(&thread[i], thread_func, (void *)i) < 0){
-            printf(1, "thread_create failed.\n");
-            exit();
-        }
-        sleep(100);
+  printf(1, "Test 1: Basic test\n");
+  create_all(2, thread_basic);
+  sleep(100);
+  printf(1, "Parent waiting for children...\n");
+  join_all(2);
+  if (status != 1) {
+    printf(1, "Join returned before thread exit, or the address space is not properly shared\n");
+    failed();
+  }
+  printf(1, "Test 1 passed\n\n");
+
+  printf(1, "Test 2: Fork test\n");
+  create_all(NUM_THREAD, thread_fork);
+  join_all(NUM_THREAD);
+  if (status != 2) {
+    if (status == 3) {
+      printf(1, "Child process referenced parent's memory\n");
     }
-    for(int i = 0; i < NTHREAD; i++){
-        int retval;
-        thread_join(thread[i], (void**)&retval);
-        printf(1, "thread joined : %d\n", retval);
+    else {
+      printf(1, "Status expected 2, found %d\n", status);
     }
+    failed();
+  }
+  printf(1, "Test 2 passed\n\n");
 
-    printf(1, "Basic Thread Test Done\n\n");
+  printf(1, "Test 3: Sbrk test\n");
+  create_all(NUM_THREAD, thread_sbrk);
+  join_all(NUM_THREAD);
+  printf(1, "Test 3 passed\n\n");
 
-    printf(1, "2. Fork Test\n");
-
-    shared = 0;
-    for(int i = 0; i < NTHREAD; i++){
-        if(thread_create(&thread[i], thread_func, (void *)i) < 0){
-            printf(1, "thread_create failed.\n");
-            exit();
-        }
-        if(i % 2 == 0)
-            fork();
-        sleep(100);
-    }
-    for(int i = 0; i < NTHREAD; i++){
-        int retval;
-        thread_join(thread[i], (void**)&retval);
-        printf(1, "thread joined : %d\n", retval);
-    }
-
-    printf(1, "Fork Test Done\n\n");
-
-    printf(1, "3. Sbrk Test\n");
-
-    shared = 0;
-    sb = 1;
-    for(int i = 0; i < NTHREAD; i++){
-        if(thread_create(&thread[i], thread_func, (void *)i) < 0){
-            printf(1, "thread_create failed.\n");
-            exit();
-        }
-        sleep(100);
-    }
-    for(int i = 0; i < NTHREAD; i++){
-        int retval;
-        thread_join(thread[i], (void**)&retval);
-        printf(1, "thread joined : %d\n", retval);
-    }
-
-    printf(1, "Sbrk Test Done\n");
-
-    exit();
+  printf(1, "All tests passed!\n");
+  exit();
 }

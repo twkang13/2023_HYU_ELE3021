@@ -65,6 +65,10 @@ exec(char *path, char **argv)
   end_op();
   ip = 0;
 
+  // Check memory limit of process
+  if(0 < curproc->memlim && curproc->memlim < sz + 2*PGSIZE)
+    return -1;
+
   // Allocate two pages at the next page boundary.
   // Make the first inaccessible.  Use the second as the user stack.
   sz = PGROUNDUP(sz);
@@ -171,29 +175,20 @@ exec2(char *path, char **argv, int stacksize)
   end_op();
   ip = 0;
 
-  // If stack size is 0, error
-  if(stacksize == 0){
-    cprintf("exec2: fail, stacksize if 0\n");
-    goto bad;
-  }
-
-  // If stacksize is too large, error
-  if(curproc->memlim > 0 && curproc->sz + stacksize*PGSIZE> curproc->memlim){
-    cprintf("exec2: fail, too large stacksize\n");
+  // If stacksize is an invalid value, return -1
+  if(stacksize < 1 || 100 < stacksize){
+    cprintf("exec2: fail, invalid stacksize\n");
     goto bad;
   }
 
   // Allocate stack pages and a guard page at the next page boundary.
   // Make the first inaccessible.  Use the second as the user stack.
   sz = PGROUNDUP(sz);
-  
-  // Increment stacksize for guard page
-  ++stacksize;
-  // Allocate stack pages
-  if((sz = allocuvm(pgdir, sz, sz + stacksize*PGSIZE)) == 0)
+  // Allocate stack pages, stacksize * stack pages + 1 guard page
+  if((sz = allocuvm(pgdir, sz, sz + (stacksize+1)*PGSIZE)) == 0)
     goto bad;
   // Allocate the guard page
-  clearpteu(pgdir, (char*)(sz - stacksize*PGSIZE));
+  clearpteu(pgdir, (char*)(sz - (stacksize+1)*PGSIZE));
   sp = sz;
 
   // Push argument strings, prepare rest of stack in ustack.
