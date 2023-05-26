@@ -169,8 +169,6 @@ growproc(int n)
   // allocate threads address without addressing
   if(curproc->isThread && !curproc->isMain)
     proc = curproc->parent;
-  else
-    proc = curproc;
 
   sz = proc->sz;
   if(n > 0){
@@ -189,18 +187,17 @@ growproc(int n)
       return -1;
     }
   }
+  //cprintf("growproc: %d %d -> %d\n", proc->pid, proc->sz, sz);
+
   proc->sz = sz;
 
-  // growproc에서는 중복 공간 할당 체크 안함,, 이미 할당된 공간에 메모리가 할당돼서 오류 생기는거 같은디
-  for(struct proc *t = ptable.proc; t < &ptable.proc[NPROC]; t++){
-    if(proc->isThread && proc->isMain && t->isThread && t->pid == proc->pid){
-      cprintf("test %d of %d\n", t->tid, t->pid);
-      t->sz = proc->sz;
-      t->pgdir = proc->pgdir;
-      
-      release(&ptable.lock);
-      plist();
-      acquire(&ptable.lock);
+  // Share address space with child threads
+  if(proc->isThread && proc->isMain){
+    for(struct proc *t = ptable.proc; t < &ptable.proc[NPROC]; t++){
+      if(t->isThread && t->parent->pid == proc->pid){
+        t->sz = proc->sz;
+        t->pgdir = proc->pgdir;
+      }
     }
   }
 
@@ -245,14 +242,7 @@ fork(void)
   np->nextid = 0;
   np->tid = 0;
   np->threadnum = 0;
-  np->totalThread = 0;
-
-  if(np->parent->isThread){
-    struct proc *main = np->parent;
-    while(!main->isThread || !main->isMain)
-      main = main->parent;
-    ++main->totalThread;
-  }
+  np->stackpages = 1;
 
   for(i = 0; i < NOFILE; i++)
     if(curproc->ofile[i])
@@ -627,20 +617,12 @@ plist()
 
   acquire(&ptable.lock);
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-    // For debugging
-    //if(p->state != UNUSED){
-    if(p->state == RUNNING || p->state == RUNNABLE){
+    if(p->state == RUNNING || p->state == RUNNABLE || p->state == SLEEPING){
       // Do not print an information of threads
       if(p->isThread && !p->isMain)
         continue;
 
-      // The number of stack pages of process
-      // TODO : fork시 totalThread에 대한 처리 
-      uint stackpages = p->sz/PGSIZE - 2;
-      if(p->isThread && p->isMain)
-        stackpages -= 2*(p->totalThread);
-
-      cprintf("pid : %d, name : %s, stack pages : %d, allocated memory : %d, ", p->pid, p->name, stackpages, p->sz - stackpages*PGSIZE);
+      cprintf("pid : %d, name : %s, stack pages : %d, allocated memory : %d, ", p->pid, p->name, p->stackpages, p->sz);
 
       if(p->memlim)
         cprintf("memory limit : %d\n", p->memlim);
@@ -692,19 +674,12 @@ thread_create(thread_t *thread, void *(*start_routine)(void *), void *arg)
   }
   clearpteu(p->pgdir, (char*)(p->sz - 2*PGSIZE));
   sp = p->sz;
+  ++nt->stackpages;
 
   // Share page table and size of process memory
   nt->pgdir = p->pgdir;
   nt->sz = p->sz;
   *nt->tf = *p->tf;
-
-  // Share modified page table and size of process memory
-  for(struct proc* thread = ptable.proc; thread < &ptable.proc[NPROC]; thread++){
-    if(thread->isThread && thread->pid == nt->pid){
-      thread->pgdir = nt->pgdir;
-      thread->sz = nt->sz;
-    }
-  }
 
   // Set thread information
   nt->isThread = 1;
@@ -727,7 +702,6 @@ thread_create(thread_t *thread, void *(*start_routine)(void *), void *arg)
 
   // Set thread id
   ++nt->parent->threadnum;
-  ++nt->parent->totalThread;
   nt->tid = nt->parent->nextid++;
   *thread = nt->tid;
 
@@ -901,7 +875,6 @@ killThreads(struct proc *thread)
         thread->parent = t->parent;
         t->isMain = 0;
         t->threadnum = 0;
-        t->totalThread = 0;
       }
       t->parent = 0;
       t->name[0] = 0;
@@ -945,7 +918,7 @@ procdump(void)
       state = states[p->state];
     else
       state = "???";
-    cprintf("%d %s %s %d", p->pid, state, p->name, p->sz/PGSIZE-2);
+    cprintf("%d %s %s %d", p->pid, state, p->name, p->sz);
     
     if(p->isThread)
       cprintf(" (thread %d of %d)", p->tid, p->pid);

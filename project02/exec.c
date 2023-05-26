@@ -76,6 +76,7 @@ exec(char *path, char **argv)
     goto bad;
   clearpteu(pgdir, (char*)(sz - 2*PGSIZE));
   sp = sz;
+  ++curproc->stackpages;
 
   // Push argument strings, prepare rest of stack in ustack.
   for(argc = 0; argv[argc]; argc++) {
@@ -190,6 +191,7 @@ exec2(char *path, char **argv, int stacksize)
   // Allocate the guard page
   clearpteu(pgdir, (char*)(sz - (stacksize+1)*PGSIZE));
   sp = sz;
+  ++curproc->stackpages;
 
   // Push argument strings, prepare rest of stack in ustack.
   for(argc = 0; argv[argc]; argc++) {
