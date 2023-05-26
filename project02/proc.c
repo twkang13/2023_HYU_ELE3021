@@ -187,22 +187,20 @@ growproc(int n)
       return -1;
     }
   }
-  //cprintf("growproc: %d %d -> %d\n", proc->pid, proc->sz, sz);
-
   proc->sz = sz;
 
   // Share address space with child threads
   if(proc->isThread && proc->isMain){
     for(struct proc *t = ptable.proc; t < &ptable.proc[NPROC]; t++){
-      if(t->isThread && t->parent->pid == proc->pid){
+      if(t->isThread && !t->isMain && t->parent->pid == proc->pid){
         t->sz = proc->sz;
         t->pgdir = proc->pgdir;
-      }
     }
   }
+  }
+  release(&ptable.lock);
 
   switchuvm(curproc);
-  release(&ptable.lock);
   return 0;
 }
 
@@ -622,6 +620,7 @@ plist()
       if(p->isThread && !p->isMain)
         continue;
 
+      // TODO : thread 할당받은 메모리 고려ㅏ여 sz 출력하기 
       cprintf("pid : %d, name : %s, stack pages : %d, allocated memory : %d, ", p->pid, p->name, p->stackpages, p->sz);
 
       if(p->memlim)
@@ -680,6 +679,14 @@ thread_create(thread_t *thread, void *(*start_routine)(void *), void *arg)
   nt->pgdir = p->pgdir;
   nt->sz = p->sz;
   *nt->tf = *p->tf;
+
+  // Share sz and pgdir of main thread with all child threads
+  for(struct proc *t = ptable.proc; t < &ptable.proc[NPROC]; t++){
+    if(t->isThread && !t->isMain && t->parent->pid == p->pid){
+      t->sz = p->sz;
+      t->pgdir = p->pgdir;
+    }
+  }
 
   // Set thread information
   nt->isThread = 1;

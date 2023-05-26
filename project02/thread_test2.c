@@ -45,7 +45,7 @@ int main(int argc, char *argv[])
             printf(1, "thread_create failed.\n");
             exit();
         }
-        else sleep(50);
+        else sleep(2);
     }
     for(int i = 0; i < NTHREAD; i++){
         int retval;
@@ -53,7 +53,7 @@ int main(int argc, char *argv[])
         printf(1, "thread joined : %d\n", retval);
     }
 
-    printf(1, "Sbrk Sleep Test Done\n");
+    printf(1, "Sbrk Sleep Test Done\n\n");
 
     printf(1, "3. Sbrk Test\n");
 
