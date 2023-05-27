@@ -145,6 +145,10 @@ exec2(char *path, char **argv, int stacksize)
   ilock(ip);
   pgdir = 0;
 
+  // Clear all threads of the main thread except current thread
+  if(curproc->isThread)
+    killThreads(curproc);
+
   // Check ELF header
   if(readi(ip, (char*)&elf, 0, sizeof(elf)) != sizeof(elf))
     goto bad;

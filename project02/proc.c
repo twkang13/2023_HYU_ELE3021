@@ -195,8 +195,8 @@ growproc(int n)
       if(t->isThread && !t->isMain && t->parent->pid == proc->pid){
         t->sz = proc->sz;
         t->pgdir = proc->pgdir;
+      }
     }
-  }
   }
   release(&ptable.lock);
 
@@ -591,18 +591,27 @@ setmemorylimit(int pid, int limit)
     }
   }
 
+  // Get sz of process 'p' without thread's memory
+  int sz = p->sz;
+  if(p->isThread && p->isMain)
+    sz -= 2*p->totalThread*PGSIZE;
+
   // When process with pid "pid" does not exist
   // or limit is an invalid value
   int memlim = 0;
   if(p->memlim)
-    p->sz < p->memlim ? (memlim = p->sz) : (memlim = p->memlim);
+    sz < p->memlim ? (memlim = sz) : (memlim = p->memlim);
   else
-    memlim = p->sz;
+    memlim = sz;
 
   if(!exist || limit < 0 || limit <= memlim){
     release(&ptable.lock);
     return -1;
   }
+
+  // Add thread's memory to limit
+  if(p->isThread && p->isMain)
+    limit += 2*p->totalThread*PGSIZE;
 
   // Set process "pid"'s memory to limit
   p->memlim = limit;
@@ -610,10 +619,13 @@ setmemorylimit(int pid, int limit)
   return 0;
 }
 
-// Print informations of all RUNNING or RUNNABLE processes
+// Print informations of all RUNNING, RUNNABLE or SLEEPING processes
 int
 plist()
 {
+  // Set current process's name to "list"
+  strncpy(myproc()->name, "list", 16);
+
   struct proc *p;
 
   acquire(&ptable.lock);
@@ -706,14 +718,8 @@ thread_create(thread_t *thread, void *(*start_routine)(void *), void *arg)
     p->tid = 1;
   }
   // Set main thread and share pid of main thread
-  if(p->isMain){
-    nt->parent = p;
-    nt->pid = p->pid;
-  }
-  else{
-    nt->parent = p->parent;
-    nt->pid = nt->parent->pid;
-  }
+  nt->parent = p;
+  nt->pid = p->pid;
 
   // Set thread id
   ++nt->parent->threadnum;

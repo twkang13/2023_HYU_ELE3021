@@ -64,7 +64,7 @@ runcmd(char *buffer)
     // Pares arguments - arg[0] : command, arg[1] : argument 1, arg[2] : argument 2
     char arg[3][51] = {0, };
     int argNum = 0, len = (int)strlen(buffer);
-    // TODO : buffer[len]의 값 확인 
+    
     for(int i = 0, j = 0; i <= len; i++, j++){
         if(buffer[i] == '\n' || buffer[i] == 32){
             arg[argNum][j] = '\0';
