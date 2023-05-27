@@ -240,6 +240,7 @@ fork(void)
   np->nextid = 0;
   np->tid = 0;
   np->threadnum = 0;
+  np->totalThread = 0;
   np->stackpages = 1;
 
   for(i = 0; i < NOFILE; i++)
@@ -292,6 +293,7 @@ exit(void)
     curproc->nextid = 0;
     curproc->tid = 0;
     curproc->threadnum = 0;
+    curproc->totalThread = 0;
   }
 
   begin_op();
@@ -554,6 +556,7 @@ kill(int pid)
         main->nextid = 0;
         main->tid = 0;
         main->threadnum = 0;
+        main->totalThread = 0;
 
         main->killed = 1;
 
@@ -620,8 +623,12 @@ plist()
       if(p->isThread && !p->isMain)
         continue;
 
-      // TODO : thread 할당받은 메모리 고려ㅏ여 sz 출력하기 
-      cprintf("pid : %d, name : %s, stack pages : %d, allocated memory : %d, ", p->pid, p->name, p->stackpages, p->sz);
+      // Set allocated memory of process
+      int allocmem = p->sz;
+      if(p->isThread)
+        allocmem -= 2*p->totalThread*PGSIZE;
+
+      cprintf("pid : %d, name : %s, stack pages : %d, allocated memory : %d, ", p->pid, p->name, p->stackpages, allocmem);
 
       if(p->memlim)
         cprintf("memory limit : %d\n", p->memlim);
@@ -674,6 +681,7 @@ thread_create(thread_t *thread, void *(*start_routine)(void *), void *arg)
   clearpteu(p->pgdir, (char*)(p->sz - 2*PGSIZE));
   sp = p->sz;
   ++nt->stackpages;
+  ++p->totalThread;
 
   // Share page table and size of process memory
   nt->pgdir = p->pgdir;
@@ -882,6 +890,7 @@ killThreads(struct proc *thread)
         thread->parent = t->parent;
         t->isMain = 0;
         t->threadnum = 0;
+        t->totalThread = 0;
       }
       t->parent = 0;
       t->name[0] = 0;

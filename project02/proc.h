@@ -39,6 +39,7 @@ struct proc {
   uint sz;                     // Size of process memory (bytes)
   int memlim;                  // Memory limit of process (bytes), 0 means unlimited
   int threadnum;               // Number of threads
+  int totalThread;             // The number of child threads of main thread
   int stackpages;              // Number of stack pages
   pde_t* pgdir;                // Page table
   char *kstack;                // Bottom of kernel stack for this process
