@@ -13,8 +13,15 @@ int main(int argc, char* argv[])
         printf(1, "setmemorylimit failed.\n");
     else
         printf(1, "setmemorylimit success\n");
+
+    if(setmemorylimit(pid, 100) < 0)
+        printf(1, "setmemorylimit failed.\n");
+    else
+        printf(1, "setmemorylimit success\n");
+
+    plist();
     
-    if(exec2("zombie", argv, 5) < 0)
+    if(exec2("forktest", argv, 5) < 0)
         printf(1, "exec2 failed.\n");
     else
         printf(1, "exec2 success\n");
