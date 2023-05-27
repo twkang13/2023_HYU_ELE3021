@@ -192,10 +192,8 @@ growproc(int n)
   // Share address space with child threads
   if(proc->isThread && proc->isMain){
     for(struct proc *t = ptable.proc; t < &ptable.proc[NPROC]; t++){
-      if(t->isThread && !t->isMain && t->parent->pid == proc->pid){
+      if(t->isThread && !t->isMain && t->parent->pid == proc->pid)
         t->sz = proc->sz;
-        t->pgdir = proc->pgdir;
-      }
     }
   }
   release(&ptable.lock);
@@ -700,12 +698,10 @@ thread_create(thread_t *thread, void *(*start_routine)(void *), void *arg)
   nt->sz = p->sz;
   *nt->tf = *p->tf;
 
-  // Share sz and pgdir of main thread with all child threads
+  // Share sz of main thread with all child threads
   for(struct proc *t = ptable.proc; t < &ptable.proc[NPROC]; t++){
-    if(t->isThread && !t->isMain && t->parent->pid == p->pid){
+    if(t->isThread && !t->isMain && t->parent->pid == p->pid)
       t->sz = p->sz;
-      t->pgdir = p->pgdir;
-    }
   }
 
   // Set thread information
