@@ -189,11 +189,13 @@ growproc(int n)
   }
   proc->sz = sz;
 
-  // Share address space with child threads
+  // Share address space and page table with child threads
   if(proc->isThread && proc->isMain){
     for(struct proc *t = ptable.proc; t < &ptable.proc[NPROC]; t++){
-      if(t->isThread && !t->isMain && t->parent->pid == proc->pid)
+      if(t->isThread && !t->isMain && t->parent->pid == proc->pid){
         t->sz = proc->sz;
+        t->pgdir = proc->pgdir;
+      }
     }
   }
   release(&ptable.lock);
