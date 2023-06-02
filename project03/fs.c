@@ -395,10 +395,82 @@ bmap(struct inode *ip, uint bn)
     brelse(bp);
     return addr;
   }
+  bn -= NINDIRECT;
 
-  // TODO : double indirect block 구현 
+  // double indirect block
+  if(bn < NDOUBLEINDIRECT){
+    // Load double indirect block, allocating if necessary.
+    if((addr = ip->addrs[NDIRECT+1]) == 0)
+      ip->addrs[NDIRECT+1] = addr = balloc(ip->dev);
+    bp = bread(ip->dev, addr);
+    a = (uint*)bp->data;
 
-  // TODO : triple indirect block 구현
+    // l1 : level 1 index, l2 : level 2 index
+    uint l1 = bn / NINDIRECT;
+    uint l2 = bn % NINDIRECT;
+
+    // Set level 1 indirect block
+    if((addr = a[l1]) == 0){
+      a[l1] = addr = balloc(ip->dev);
+      log_write(bp);
+    }
+    brelse(bp);
+
+    // Set level 2 indirect block
+    bp = bread(ip->dev, addr);
+    a = (uint*)bp->data;
+
+    if((addr = a[l2]) == 0){
+      a[l2] = addr = balloc(ip->dev);
+      log_write(bp);
+    }
+    brelse(bp);
+    return addr;
+  }
+  bn -= NDOUBLEINDIRECT;
+
+  // triple indirect block
+  if(bn < NTRIPLEINDIRECT){
+    // Load triple indirect block, allocating if necessary.
+    if((addr = ip->addrs[NDIRECT+2]) == 0)
+      ip->addrs[NDIRECT+2] = addr = balloc(ip->dev);
+    bp = bread(ip->dev, addr);
+    a = (uint*)bp->data;
+
+    // l1 : level 1 index, l2 : level 2 index, l3 : level 3 index
+    uint l1 = bn / NDOUBLEINDIRECT;
+    uint tmpbn = bn % NDOUBLEINDIRECT;
+    uint l2 = tmpbn / NINDIRECT;
+    uint l3 = tmpbn % NINDIRECT;
+
+    // Set level 1 indirect block
+    if((addr = a[l1]) == 0){
+      a[l1] = addr = balloc(ip->dev);
+      log_write(bp);
+    }
+    brelse(bp);
+
+    // Set level 2 indirect block
+    bp = bread(ip->dev, addr);
+    a = (uint*)bp->data;
+
+    if((addr = a[l2]) == 0){
+      a[l2] = addr = balloc(ip->dev);
+      log_write(bp);
+    }
+    brelse(bp);
+
+    // Set level 3 indirect block
+    bp = bread(ip->dev, addr);
+    a = (uint*)bp->data;
+
+    if((addr = a[l3]) == 0){
+      a[l3] = addr = balloc(ip->dev);
+      log_write(bp);
+    }
+    brelse(bp);
+    return addr;
+  }
 
   panic("bmap: out of range");
 }

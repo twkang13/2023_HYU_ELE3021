@@ -24,7 +24,7 @@ struct inode {
   uint size;
   // TODO : 바꾸기, address 완전히 공유하고 있으면 hard link. inode 자체를 공유는 x
   //        pointer를 다른 file로 redirection하면 soft link
-  uint addrs[NDIRECT+1];
+  uint addrs[NDIRECT+3];
 };
 
 // table mapping major device number to
