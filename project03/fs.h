@@ -21,7 +21,8 @@ struct superblock {
   uint bmapstart;    // Block number of first free map block
 };
 
-#define NDIRECT 12
+// NDIRECT should be a factor of BSIZE
+#define NDIRECT 10
 #define NINDIRECT (BSIZE / sizeof(uint))
 #define MAXFILE (NDIRECT + NINDIRECT + NDOUBLEINDIRECT + NTRIPLEINDIRECT)
 #define NDOUBLEINDIRECT (NINDIRECT * NINDIRECT)

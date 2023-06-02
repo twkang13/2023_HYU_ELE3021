@@ -397,6 +397,8 @@ bmap(struct inode *ip, uint bn)
   }
   bn -= NINDIRECT;
 
+  // TODO : double indirect block, triple indirect block test
+
   // double indirect block
   if(bn < NDOUBLEINDIRECT){
     // Load double indirect block, allocating if necessary.
@@ -504,6 +506,75 @@ itrunc(struct inode *ip)
     brelse(bp);
     bfree(ip->dev, ip->addrs[NDIRECT]);
     ip->addrs[NDIRECT] = 0;
+  }
+
+  // TODO : double indirect block, triple indirect block test
+
+  // truncate double indirect block
+  if(ip->addrs[NDIRECT+1]){
+    int m, n;
+
+    bp = bread(ip->dev, ip->addrs[NDIRECT+1]);
+    a = (uint*)bp->data;
+
+    // free first level block
+    for(n = 0; n < NINDIRECT; n++){
+      if(a[n]){
+        struct buf *bpsec = bread(ip->dev, a[n]);
+        uint *asec = (uint*)bpsec->data;
+
+        // free second level block
+        for(m = 0; m < NINDIRECT; m++){
+          if(asec[m])
+            bfree(ip->dev, asec[m]);
+        }
+
+        brelse(bpsec);
+        bfree(ip->dev, a[n]);
+      }
+    }
+    brelse(bp);
+    bfree(ip->dev, ip->addrs[NDIRECT+1]);
+    ip->addrs[NDIRECT+1] = 0;
+  }
+
+  // truncate triple indirect block
+  if(ip->addrs[NDIRECT+2]){
+    int m, n, k;
+
+    bp = bread(ip->dev, ip->addrs[NDIRECT+2]);
+    a = (uint*)bp->data;
+
+    // free first level block
+    for(k = 0; k < NINDIRECT; k++){
+      if(a[k]){
+        struct buf *bpsec = bread(ip->dev, a[k]);
+        uint *asec = (uint*)bpsec->data;
+
+        // free second level block
+        for(m = 0; m < NINDIRECT; m++){
+          if(asec[m]){
+            struct buf *bpthird = bread(ip->dev, asec[m]);
+            uint *athird = (uint*)bpthird->data;
+
+            // free third level block
+            for(n = 0; n < NINDIRECT; n++){
+              if(athird[n])
+                bfree(ip->dev, athird[n]);
+            }
+
+            brelse(bpthird);
+            bfree(ip->dev, asec[m]);
+          }
+        }
+
+        brelse(bpsec);
+        bfree(ip->dev, a[k]);
+      }
+    }
+    brelse(bp);
+    bfree(ip->dev, ip->addrs[NDIRECT+2]);
+    ip->addrs[NDIRECT+2] = 0;
   }
 
   ip->size = 0;
