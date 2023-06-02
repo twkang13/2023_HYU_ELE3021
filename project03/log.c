@@ -133,7 +133,7 @@ begin_op(void)
       // this op might exhaust log space; wait for commit.
       sleep(&log, &log.lock);
     } else {
-      log.outstanding += 1;
+      log.outstanding += 1; // file system을 쓰겠다는 선언
       release(&log.lock);
       break;
     }
@@ -148,7 +148,7 @@ end_op(void)
   int do_commit = 0;
 
   acquire(&log.lock);
-  log.outstanding -= 1;
+  log.outstanding -= 1; // file system 사용을 종료하겠다는 선언
   if(log.committing)
     panic("log.committing");
   if(log.outstanding == 0){
@@ -162,6 +162,7 @@ end_op(void)
   }
   release(&log.lock);
 
+  // TODO : commit 매커니즘 지우고 sync가 호출되면 flush 발생하도록 변경
   if(do_commit){
     // call commit w/o holding locks, since not allowed
     // to sleep with locks.

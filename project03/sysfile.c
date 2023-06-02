@@ -295,6 +295,8 @@ sys_open(void)
 
   begin_op();
 
+  // TODO : symbolic link인지 파악해서 open할 file 정하기
+
   if(omode & O_CREATE){
     ip = create(path, T_FILE, 0, 0);
     if(ip == 0){

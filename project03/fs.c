@@ -396,6 +396,10 @@ bmap(struct inode *ip, uint bn)
     return addr;
   }
 
+  // TODO : double indirect block 구현 
+
+  // TODO : triple indirect block 구현
+
   panic("bmap: out of range");
 }
 
