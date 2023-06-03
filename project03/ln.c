@@ -9,7 +9,18 @@ main(int argc, char *argv[])
     printf(2, "Usage: ln op old new\n");
     exit();
   }
-  if(link(argv[1], argv[2], argv[3]) < 0)
-    printf(2, "link %s %s %s: failed\n", argv[1], argv[2], argv[3]);
+
+  if(strncmp(argv[1], "-h", 2) == 0){
+    if(link(argv[2], argv[3]) < 0)
+      printf(2, "link %s %s %s: failed\n", argv[1], argv[2], argv[3]);
+    exit();
+  }
+
+  if(strncmp(argv[1], "-s", 2) == 0){
+    if(symlink(argv[2], argv[3]) < 0)
+      printf(2, "symlink %s %s %s: failed\n", argv[1], argv[2], argv[3]);
+    exit();
+  }
+
   exit();
 }

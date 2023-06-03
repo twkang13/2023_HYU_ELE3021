@@ -231,33 +231,8 @@ iupdate(struct inode *ip)
   dip->nlink = ip->nlink;
   dip->size = ip->size;
   memmove(dip->addrs, ip->addrs, sizeof(ip->addrs));
-  log_write(bp);
-  brelse(bp);
-}
-
-// Copy a modified in-memory inode to disk. (Symolic link)
-// Must be called after every change to an ip->xxx field
-// that lives on disk, since i-node cache is write-through.
-// Caller must hold ip->lock.
-void
-isymupdate(struct inode *ip)
-{
-  struct buf *bp;
-  struct dinode *dip;
-
-  // Set inode's type to T_SYMLINK
-  ip->type = 3;
-
-  // TODO : Copy the path to the inode's addrs
-
-  bp = bread(ip->dev, IBLOCK(ip->inum, sb));
-  dip = (struct dinode*)bp->data + ip->inum%IPB;
-  dip->type = ip->type;
-  dip->major = ip->major;
-  dip->minor = ip->minor;
-  dip->nlink = ip->nlink;
-  dip->size = ip->size;
-  memmove(dip->addrs, ip->addrs, sizeof(ip->addrs));
+  // Set symbloic pointer
+  dip->sympointer = ip->sympointer;
   log_write(bp);
   brelse(bp);
 }
