@@ -535,8 +535,6 @@ itrunc(struct inode *ip)
     ip->addrs[NDIRECT] = 0;
   }
 
-  // TODO : double indirect block, triple indirect block test
-
   // truncate double indirect block
   if(ip->addrs[NDIRECT+1]){
     int m, n;
