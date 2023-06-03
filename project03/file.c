@@ -77,6 +77,11 @@ fileclose(struct file *f)
     iput(ff.ip);
     end_op();
   }
+  else if(ff.type == FD_SYMBLOIC){
+    begin_op();
+    // TODO : symbolic link 구현 
+    end_op();
+  }
 }
 
 // Get metadata about file f.
@@ -88,6 +93,9 @@ filestat(struct file *f, struct stat *st)
     stati(f->ip, st);
     iunlock(f->ip);
     return 0;
+  }
+  if(f->type == FD_SYMBLOIC){
+    // TODO : symbolic link 구현 
   }
   return -1;
 }
@@ -108,6 +116,9 @@ fileread(struct file *f, char *addr, int n)
       f->off += r;
     iunlock(f->ip);
     return r;
+  }
+  if(f->type == FD_SYMBLOIC){
+    // TODO : symbolic link 구현 
   }
   panic("fileread");
 }
@@ -151,6 +162,9 @@ filewrite(struct file *f, char *addr, int n)
       i += r;
     }
     return i == n ? n : -1;
+  }
+  if(f->type == FD_SYMBLOIC){
+    // TODO : symbolic link 구현 
   }
   panic("filewrite");
 }

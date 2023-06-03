@@ -22,7 +22,7 @@ struct superblock {
 };
 
 // NDIRECT should be a factor of BSIZE
-#define NDIRECT 10
+#define NDIRECT 9
 #define NINDIRECT (BSIZE / sizeof(uint))
 #define MAXFILE (NDIRECT + NINDIRECT + NDOUBLEINDIRECT + NTRIPLEINDIRECT)
 #define NDOUBLEINDIRECT (NINDIRECT * NINDIRECT)
@@ -39,6 +39,7 @@ struct dinode {
                            // addrs[NDIRECT]   : indirect block address
                            // addrs[NDIRECT+1] : double indirect block address
                            // addrs[NDIRECT+2] : triple indirect block address
+  uint sympointer;      // symbolic link pointer
 };
 
 // Inodes per block.

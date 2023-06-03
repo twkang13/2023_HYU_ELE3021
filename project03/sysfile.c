@@ -118,10 +118,10 @@ sys_fstat(void)
 int
 sys_link(void)
 {
-  char name[DIRSIZ], *new, *old;
+  char name[DIRSIZ], *op, *new, *old;
   struct inode *dp, *ip;
 
-  if(argstr(0, &old) < 0 || argstr(1, &new) < 0)
+  if(argstr(0, &op) < 0 || argstr(1, &old) < 0 || argstr(2, &new) < 0)
     return -1;
 
   begin_op();
@@ -138,7 +138,16 @@ sys_link(void)
   }
 
   ip->nlink++;
-  iupdate(ip);
+
+  // hard link if op is "-h"
+  if(!strncmp(op, "-h", 2))
+    iupdate(ip);
+  // symbolic link if op is "-s"
+  else if(!strncmp(op, "-s", 2))
+    isymupdate(ip);
+  else
+    panic("sys_link : op error");
+
   iunlock(ip);
 
   if((dp = nameiparent(new, name)) == 0)
