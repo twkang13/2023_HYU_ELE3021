@@ -1,5 +1,5 @@
 struct file {
-  enum { FD_NONE, FD_PIPE, FD_INODE } type; // File type에 symbolic link 관련 내용 추가, path로 redirection
+  enum { FD_NONE, FD_PIPE, FD_INODE } type;
   int ref; // reference count
   char readable;
   char writable;
@@ -23,7 +23,6 @@ struct inode {
   short nlink;
   uint size;
   uint addrs[NDIRECT+3];
-  uint symp;          // symbolic link inum
 };
 
 // table mapping major device number to

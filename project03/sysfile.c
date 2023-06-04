@@ -164,70 +164,6 @@ bad:
   return -1;
 }
 
-// Create the path new as a link to the same inode as old. (Symbolic link)
-int
-sys_symlink(void)
-{
-  char name[DIRSIZ], *new, *old;
-  struct inode *dp, *ip;
-
-  if(argstr(0, &old) < 0 || argstr(1, &new) < 0)
-    return -1;
-
-  begin_op();
-  if((ip = namei(old)) == 0){
-    end_op();
-    return -1;
-  }
-
-  ilock(ip);
-  if(ip->type == T_DIR){
-    iunlockput(ip);
-    end_op();
-    return -1;
-  }
-
-  ip->nlink++;
-  iupdate(ip);
-  iunlock(ip);
-
-  if((dp = nameiparent(new, name)) == 0)
-    goto bad;
-  ilock(dp);
-  if(dp->dev != ip->dev){
-    iunlockput(dp);
-    goto bad;
-  }
-
-  if((ip = dirlookup(dp, name, 0)) != 0){
-    iunlockput(dp);
-    goto bad;
-  }
-
-  if((ip = ialloc(dp->dev, T_SYMLINK)) == 0)
-    panic("create: ialloc");
-
-  // Symbolic link to inum
-  dp->symp = ip->inum;
-
-  iunlockput(dp);
-  iput(ip);
-
-  end_op();
-
-  cprintf("symlink: %s -> %s\n", old, new);
-
-  return 0;
-
-bad:
-  ilock(ip);
-  ip->nlink--;
-  iupdate(ip);
-  iunlockput(ip);
-  end_op();
-  return -1;
-}
-
 // Is the directory dp empty except for "." and ".." ?
 static int
 isdirempty(struct inode *dp)
@@ -317,6 +253,9 @@ create(char *path, short type, short major, short minor)
     ilock(ip);
     if(type == T_FILE && ip->type == T_FILE)
       return ip;
+    // Return ip if file is symbolic link
+    if(type == T_SYMLINK)
+      return ip;
     iunlockput(ip);
     return 0;
   }
@@ -359,8 +298,6 @@ sys_open(void)
 
   begin_op();
 
-  // TODO : symbolic link인지 파악해서 open할 file 정하기
-
   if(omode & O_CREATE){
     ip = create(path, T_FILE, 0, 0);
     if(ip == 0){
@@ -378,6 +315,11 @@ sys_open(void)
       end_op();
       return -1;
     }
+  }
+
+  // Symbolic link
+  if(ip->type == T_SYMLINK){
+
   }
 
   if((f = filealloc()) == 0 || (fd = fdalloc(f)) < 0){
@@ -506,5 +448,28 @@ sys_pipe(void)
   }
   fd[0] = fd0;
   fd[1] = fd1;
+  return 0;
+}
+
+// Create the path new as a link to the same inode as old. (Symbolic link)
+int
+sys_symlink(void)
+{
+  char *new, *old;
+  struct inode *dp;
+
+  if(argstr(0, &old) < 0 || argstr(1, &new) < 0)
+    return -1;
+
+  begin_op();
+
+  if((dp = create(new, T_SYMLINK, 0, 0)) == 0){
+    end_op();
+    return -1;
+  }
+  writei(dp, old, 0, strlen(old));
+  iunlockput(dp);
+
+  end_op();
   return 0;
 }

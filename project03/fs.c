@@ -231,8 +231,6 @@ iupdate(struct inode *ip)
   dip->nlink = ip->nlink;
   dip->size = ip->size;
   memmove(dip->addrs, ip->addrs, sizeof(ip->addrs));
-  // Set symbloic pointer
-  dip->symp = ip->symp;
   log_write(bp);
   brelse(bp);
 }
@@ -648,7 +646,7 @@ writei(struct inode *ip, char *src, uint off, uint n)
     brelse(bp);
   }
 
-  if(n > 0 && off > ip->size){
+  if(n > 0 && ip->type != T_SYMLINK && off > ip->size){
     ip->size = off;
     iupdate(ip);
   }
