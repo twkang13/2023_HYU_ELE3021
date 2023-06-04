@@ -232,7 +232,7 @@ iupdate(struct inode *ip)
   dip->size = ip->size;
   memmove(dip->addrs, ip->addrs, sizeof(ip->addrs));
   // Set symbloic pointer
-  dip->sympointer = ip->sympointer;
+  dip->symp = ip->symp;
   log_write(bp);
   brelse(bp);
 }
@@ -398,8 +398,6 @@ bmap(struct inode *ip, uint bn)
     return addr;
   }
   bn -= NINDIRECT;
-
-  // TODO : double indirect block, triple indirect block test
 
   // double indirect block
   if(bn < NDOUBLEINDIRECT){

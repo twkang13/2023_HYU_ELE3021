@@ -194,14 +194,28 @@ sys_symlink(void)
   if((dp = nameiparent(new, name)) == 0)
     goto bad;
   ilock(dp);
-  if(dp->dev != ip->dev || dirlink(dp, name, ip->inum) < 0){
+  if(dp->dev != ip->dev){
     iunlockput(dp);
     goto bad;
   }
+
+  if((ip = dirlookup(dp, name, 0)) != 0){
+    iunlockput(dp);
+    goto bad;
+  }
+
+  if((ip = ialloc(dp->dev, T_SYMLINK)) == 0)
+    panic("create: ialloc");
+
+  // Symbolic link to inum
+  dp->symp = ip->inum;
+
   iunlockput(dp);
   iput(ip);
 
   end_op();
+
+  cprintf("symlink: %s -> %s\n", old, new);
 
   return 0;
 

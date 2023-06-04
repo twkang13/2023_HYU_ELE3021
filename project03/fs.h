@@ -39,7 +39,7 @@ struct dinode {
                            // addrs[NDIRECT]   : indirect block address
                            // addrs[NDIRECT+1] : double indirect block address
                            // addrs[NDIRECT+2] : triple indirect block address
-  uint sympointer;      // symbolic link pointer
+  uint symp;            // symbolic link inum
 };
 
 // Inodes per block.

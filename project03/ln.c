@@ -10,13 +10,13 @@ main(int argc, char *argv[])
     exit();
   }
 
-  if(strncmp(argv[1], "-h", 2) == 0){
+  if(!strcmp(argv[1], "-h")){
     if(link(argv[2], argv[3]) < 0)
       printf(2, "link %s %s %s: failed\n", argv[1], argv[2], argv[3]);
     exit();
   }
 
-  if(strncmp(argv[1], "-s", 2) == 0){
+  if(!strcmp(argv[1], "-s")){
     if(symlink(argv[2], argv[3]) < 0)
       printf(2, "symlink %s %s %s: failed\n", argv[1], argv[2], argv[3]);
     exit();
