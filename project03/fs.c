@@ -840,11 +840,15 @@ readsym(char *path, char *sympath)
     return -1;
   }
 
-  // TODO : sympath가 가르키는 file이 또 symbolic link인 경우 처리 
-
+  // Read the path of the desitation file (ex. symbolic -> symbolic -> file)
+  if(namei(ip->symlink)->type == T_SYMLINK){
+    readsym(ip->symlink, sympath);
+  }
   // Set sympath to the path of symbolic link
-  safestrcpy(sympath, ip->symlink, MAXSYM);
-
+  else{
+    safestrcpy(sympath, ip->symlink, MAXSYM);
+  }
+  
   iunlock(ip);
   return 0;
 }
