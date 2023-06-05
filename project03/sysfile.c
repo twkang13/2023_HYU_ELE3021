@@ -289,6 +289,7 @@ int
 sys_open(void)
 {
   char *path;
+  char sympath[16] = {0, };
   int fd, omode;
   struct file *f;
   struct inode *ip;
@@ -305,9 +306,19 @@ sys_open(void)
       return -1;
     }
   } else {
-    if((ip = namei(path)) == 0){
-      end_op();
-      return -1;
+    // Get path of symbolic link
+    if(readsym(path, sympath) == 0){
+      if((ip = namei(sympath)) == 0){
+        end_op();
+        return -1;
+      }
+    }
+    // Get path of normal file
+    else{
+      if((ip = namei(path)) == 0){
+        end_op();
+        return -1;
+      }
     }
     ilock(ip);
     if(ip->type == T_DIR && omode != O_RDONLY){
@@ -462,12 +473,12 @@ sys_symlink(void)
     end_op();
     return -1;
   }
-  writei(dp, old, 0, strlen(old));
-  iunlockput(dp);
 
   // Set symbolic link
-  dp->symlink = old;
+  safestrcpy(dp->symlink, old, PGSIZE);
+  iupdate(dp);
 
+  iunlockput(dp);
   end_op();
   return 0;
 }

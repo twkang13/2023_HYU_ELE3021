@@ -18,21 +18,20 @@ exec(char *path, char **argv)
   struct proghdr ph;
   pde_t *pgdir, *oldpgdir;
   struct proc *curproc = myproc();
-  // path of symbolic link
-  char sympath[50] = {0, };
+  // Path of symbolic link
+  char sympath[16] = {0, };
 
   begin_op();
 
-  // get path of symbolic link
+  // Get path of symbolic link
   if(readsym(path, sympath) == 0){
-    cprintf("sympath : %s\n", sympath);
     if((ip = namei(sympath)) == 0){
       end_op();
       cprintf("exec: fail\n");
       return -1;
     }
   }
-  // get path of normal file
+  // Get path of normal file
   else{
     if((ip = namei(path)) == 0){
       end_op();

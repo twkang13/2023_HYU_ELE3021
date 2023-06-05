@@ -231,6 +231,9 @@ iupdate(struct inode *ip)
   dip->nlink = ip->nlink;
   dip->size = ip->size;
   memmove(dip->addrs, ip->addrs, sizeof(ip->addrs));
+  // Save symbolic link to disk inode
+  if(ip->type == T_SYMLINK)
+    safestrcpy(dip->symlink, ip->symlink, MAXSYM);
   log_write(bp);
   brelse(bp);
 }
@@ -304,6 +307,9 @@ ilock(struct inode *ip)
     ip->nlink = dip->nlink;
     ip->size = dip->size;
     memmove(ip->addrs, dip->addrs, sizeof(ip->addrs));
+    // Load symbolic link from disk inode
+    if(ip->type == T_SYMLINK)
+      safestrcpy(ip->symlink, dip->symlink, MAXSYM);
     brelse(bp);
     ip->valid = 1;
     if(ip->type == 0)
@@ -646,7 +652,7 @@ writei(struct inode *ip, char *src, uint off, uint n)
     brelse(bp);
   }
 
-  if(n > 0 && ip->type != T_SYMLINK && off > ip->size){
+  if(n > 0 && off > ip->size){
     ip->size = off;
     iupdate(ip);
   }
@@ -768,7 +774,6 @@ static struct inode*
 namex(char *path, int nameiparent, char *name)
 {
   struct inode *ip, *next;
-  //char buffer[50] = {0, };
 
   if(*path == '/')
     ip = iget(ROOTDEV, ROOTINO);
@@ -790,27 +795,6 @@ namex(char *path, int nameiparent, char *name)
       iunlockput(ip);
       return 0;
     }
-    /*
-    // Symbloic link redirection
-    // TODO : next에 lock 걸기
-    if(next->type == T_SYMLINK){
-      cprintf("namex: inum, type = %d %d\n", next->inum, next->type);
-      
-      // Read contents of symbolic link
-      if(readi(next, buffer, 0, next->size) != next->size){
-        cprintf("namex: readi failed\n");
-        iunlockput(ip);
-        return 0;
-      }
-      // Add null character to the end of buffer
-      buffer[next->size] = '\0';
-      cprintf("namex: inum, type after readi = %d %d\n", next->inum, next->type);
-      cprintf("namex: buffer = %s\n", buffer);
-      
-      // Follow next link
-      next = namex(buffer, 0, name);
-    }
-    */
     iunlockput(ip);
     ip = next;
   }
@@ -851,14 +835,15 @@ readsym(char *path, char *sympath)
     return -1;
   }
 
-  // Copy contents of symbolic link to sympath
-  if(readi(ip, sympath, 0, ip->size) != ip->size){
+  if((namei(ip->symlink)) == 0){
     iunlock(ip);
     return -1;
   }
-  sympath[ip->size] = '\0';
 
-  cprintf("readsym: sympath, path, size = %s %s %d\n", sympath, path, ip->size);
+  // TODO : sympath가 가르키는 file이 또 symbolic link인 경우 처리 
+
+  // Set sympath to the path of symbolic link
+  safestrcpy(sympath, ip->symlink, MAXSYM);
 
   iunlock(ip);
   return 0;
