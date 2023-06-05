@@ -317,11 +317,6 @@ sys_open(void)
     }
   }
 
-  // Symbolic link
-  if(ip->type == T_SYMLINK){
-
-  }
-
   if((f = filealloc()) == 0 || (fd = fdalloc(f)) < 0){
     if(f)
       fileclose(f);
@@ -469,6 +464,9 @@ sys_symlink(void)
   }
   writei(dp, old, 0, strlen(old));
   iunlockput(dp);
+
+  // Set symbolic link
+  dp->symlink = old;
 
   end_op();
   return 0;

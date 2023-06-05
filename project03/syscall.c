@@ -92,7 +92,6 @@ extern int sys_fstat(void);
 extern int sys_getpid(void);
 extern int sys_kill(void);
 extern int sys_link(void);
-extern int sys_symlink(void);
 extern int sys_mkdir(void);
 extern int sys_mknod(void);
 extern int sys_open(void);
@@ -104,6 +103,7 @@ extern int sys_unlink(void);
 extern int sys_wait(void);
 extern int sys_write(void);
 extern int sys_uptime(void);
+extern int sys_symlink(void);
 
 static int (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
@@ -125,9 +125,9 @@ static int (*syscalls[])(void) = {
 [SYS_mknod]   sys_mknod,
 [SYS_unlink]  sys_unlink,
 [SYS_link]    sys_link,
-[SYS_symlink] sys_symlink,
 [SYS_mkdir]   sys_mkdir,
 [SYS_close]   sys_close,
+[SYS_symlink] sys_symlink,
 };
 
 void

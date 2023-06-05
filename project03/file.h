@@ -23,6 +23,7 @@ struct inode {
   short nlink;
   uint size;
   uint addrs[NDIRECT+3];
+  char* symlink;      // path of symbolic link
 };
 
 // table mapping major device number to

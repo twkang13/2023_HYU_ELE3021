@@ -768,6 +768,7 @@ static struct inode*
 namex(char *path, int nameiparent, char *name)
 {
   struct inode *ip, *next;
+  //char buffer[50] = {0, };
 
   if(*path == '/')
     ip = iget(ROOTDEV, ROOTINO);
@@ -789,6 +790,27 @@ namex(char *path, int nameiparent, char *name)
       iunlockput(ip);
       return 0;
     }
+    /*
+    // Symbloic link redirection
+    // TODO : next에 lock 걸기
+    if(next->type == T_SYMLINK){
+      cprintf("namex: inum, type = %d %d\n", next->inum, next->type);
+      
+      // Read contents of symbolic link
+      if(readi(next, buffer, 0, next->size) != next->size){
+        cprintf("namex: readi failed\n");
+        iunlockput(ip);
+        return 0;
+      }
+      // Add null character to the end of buffer
+      buffer[next->size] = '\0';
+      cprintf("namex: inum, type after readi = %d %d\n", next->inum, next->type);
+      cprintf("namex: buffer = %s\n", buffer);
+      
+      // Follow next link
+      next = namex(buffer, 0, name);
+    }
+    */
     iunlockput(ip);
     ip = next;
   }
@@ -810,4 +832,34 @@ struct inode*
 nameiparent(char *path, char *name)
 {
   return namex(path, 1, name);
+}
+
+// Read a symbolic link
+int
+readsym(char *path, char *sympath)
+{
+  struct inode *ip;
+
+  // Get inode of path
+  if((ip = namei(path)) == 0)
+    return -1;
+  ilock(ip);
+  
+  // Check if inode is a symbolic link
+  if(ip->type != T_SYMLINK){
+    iunlock(ip);
+    return -1;
+  }
+
+  // Copy contents of symbolic link to sympath
+  if(readi(ip, sympath, 0, ip->size) != ip->size){
+    iunlock(ip);
+    return -1;
+  }
+  sympath[ip->size] = '\0';
+
+  cprintf("readsym: sympath, path, size = %s %s %d\n", sympath, path, ip->size);
+
+  iunlock(ip);
+  return 0;
 }

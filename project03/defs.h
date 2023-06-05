@@ -37,7 +37,6 @@ int             filewrite(struct file*, char*, int n);
 // fs.c
 void            readsb(int dev, struct superblock *sb);
 int             dirlink(struct inode*, char*, uint);
-int             symlink(struct inode*, char*, uint);
 struct inode*   dirlookup(struct inode*, char*, uint*);
 struct inode*   ialloc(uint, short);
 struct inode*   idup(struct inode*);
@@ -54,6 +53,7 @@ struct inode*   nameiparent(char*, char*);
 int             readi(struct inode*, char*, uint, uint);
 void            stati(struct inode*, struct stat*);
 int             writei(struct inode*, char*, uint, uint);
+int             readsym(char*, char*);
 
 // ide.c
 void            ideinit(void);
