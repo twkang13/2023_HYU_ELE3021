@@ -482,3 +482,10 @@ sys_symlink(void)
   end_op();
   return 0;
 }
+
+// Wrapper function for sync
+int
+sys_sync(void)
+{
+  return sync();
+}
