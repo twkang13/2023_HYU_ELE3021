@@ -139,6 +139,25 @@ brelse(struct buf *b)
   
   release(&bcache.lock);
 }
+
+int
+bfull(void)
+{
+  struct buf *buffer;
+
+  acquire(&bcache.lock);
+
+  // Traverse the buffer cache to find an empty buffer.
+  for(buffer = bcache.head.next; buffer != &bcache.head; buffer = buffer->next){
+    if(buffer->refcnt == 0){
+      release(&bcache.lock);
+      return 0;
+    }
+  }
+
+  return 1;
+}
+
 //PAGEBREAK!
 // Blank page.
 

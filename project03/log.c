@@ -133,7 +133,7 @@ begin_op(void)
       // this op might exhaust log space; wait for commit.
       sleep(&log, &log.lock);
     } else {
-      log.outstanding += 1; // file system을 쓰겠다는 선언
+      log.outstanding += 1;
       release(&log.lock);
       break;
     }
@@ -172,6 +172,7 @@ end_op(void)
     wakeup(&log);
     release(&log.lock);
   }
+
 }
 
 // Copy modified blocks from cache to log.
@@ -240,7 +241,23 @@ log_write(struct buf *b)
 int
 sync(void)
 {
+  struct buf *buf = bread(log.dev, log.start);
+
+  // flush log to memory
   begin_op();
+  log.committing = 1;
+  log_write(buf);
   end_op();
+
+  // call commit w/o holding locks, since not allowed
+  // to sleep with locks.
+  commit();
+  acquire(&log.lock);
+  log.committing = 0;
+  wakeup(&log);
+  release(&log.lock);
+
+  cprintf("sync done.\n");
+
   return 0;
 }
