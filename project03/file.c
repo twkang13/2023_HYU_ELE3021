@@ -29,6 +29,11 @@ filealloc(void)
   struct file *f;
 
   acquire(&ftable.lock);
+
+  // sync if the buffer is full
+  if(bfull())
+    sync();
+
   for(f = ftable.file; f < ftable.file + NFILE; f++){
     if(f->ref == 0){
       f->ref = 1;
@@ -65,6 +70,11 @@ fileclose(struct file *f)
     release(&ftable.lock);
     return;
   }
+
+  // sync if the buffer is full
+  if(bfull())
+    sync();
+    
   ff = *f;
   f->ref = 0;
   f->type = FD_NONE;
@@ -103,6 +113,10 @@ fileread(struct file *f, char *addr, int n)
   if(f->type == FD_PIPE)
     return piperead(f->pipe, addr, n);
   if(f->type == FD_INODE){
+    // sync if the buffer is full
+    if(bfull())
+      sync();
+
     ilock(f->ip);
     if((r = readi(f->ip, addr, f->off, n)) > 0)
       f->off += r;
@@ -137,12 +151,21 @@ filewrite(struct file *f, char *addr, int n)
       if(n1 > max)
         n1 = max;
 
+      // sync if the buffer is full
+      if(bfull()){
+        cprintf("filewrite: buffer is full\n");
+        sync();
+      }
+
       begin_op();
       ilock(f->ip);
       if ((r = writei(f->ip, addr + i, f->off, n1)) > 0)
         f->off += r;
       iunlock(f->ip);
       end_op();
+
+      // If sync is called, flush the buffer cache to disk
+      //sync();
 
       if(r < 0)
         break;
