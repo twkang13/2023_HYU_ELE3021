@@ -3,7 +3,7 @@
 #include "user.h"
 #include "fcntl.h"
 
-#define FSIZE1 (1024 * 1024 * 6)
+#define FSIZE1 (1024 * 1024 * 8)
 #define FSIZE2 (1024 * 1024 * 16)
 
 char buffer1[FSIZE1], buffer2[FSIZE2];
@@ -133,7 +133,7 @@ int main(int argc, char *argv[])
         buffer2[i] = '0' + (i%10);
     }
 
-    printf(1, "Test 1: write 6MB (%d) file\n", FSIZE1);
+    printf(1, "Test 1: write 8MB (%d) file\n", FSIZE1);
     test1();
     printf(1, "Test 1 done\n");
 
