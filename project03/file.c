@@ -30,10 +30,6 @@ filealloc(void)
 
   acquire(&ftable.lock);
 
-  // sync if the buffer is full
-  if(bfull())
-    sync();
-
   for(f = ftable.file; f < ftable.file + NFILE; f++){
     if(f->ref == 0){
       f->ref = 1;
@@ -70,10 +66,6 @@ fileclose(struct file *f)
     release(&ftable.lock);
     return;
   }
-
-  // sync if the buffer is full
-  if(bfull())
-    sync();
     
   ff = *f;
   f->ref = 0;
@@ -87,6 +79,8 @@ fileclose(struct file *f)
     iput(ff.ip);
     end_op();
   }
+
+  // TODO : sync가 호출되지 않고 file이 close된 경우 변경 내용이 반영되지 않도록 수정
 }
 
 // Get metadata about file f.
@@ -113,10 +107,6 @@ fileread(struct file *f, char *addr, int n)
   if(f->type == FD_PIPE)
     return piperead(f->pipe, addr, n);
   if(f->type == FD_INODE){
-    // sync if the buffer is full
-    if(bfull())
-      sync();
-
     ilock(f->ip);
     if((r = readi(f->ip, addr, f->off, n)) > 0)
       f->off += r;
@@ -150,13 +140,7 @@ filewrite(struct file *f, char *addr, int n)
       int n1 = n - i;
       if(n1 > max)
         n1 = max;
-
-      // sync if the buffer is full
-      if(bfull()){
-        cprintf("filewrite: buffer is full\n");
-        sync();
-      }
-
+        
       begin_op();
       ilock(f->ip);
       if ((r = writei(f->ip, addr + i, f->off, n1)) > 0)

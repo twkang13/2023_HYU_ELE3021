@@ -145,16 +145,11 @@ begin_op(void)
 void
 end_op(void)
 {
-  int do_commit = 0;
-
   acquire(&log.lock);
   log.outstanding -= 1; // file system 사용을 종료하겠다는 선언
   if(log.committing)
     panic("log.committing");
-  if(log.outstanding == 0){
-    do_commit = 1;
-    log.committing = 1;
-  } else {
+  else {
     // begin_op() may be waiting for log space,
     // and decrementing log.outstanding has decreased
     // the amount of reserved space.
@@ -163,16 +158,6 @@ end_op(void)
   release(&log.lock);
 
   // TODO : commit 매커니즘 지우고 sync가 호출되면 flush 발생하도록 변경
-  if(do_commit){
-    // call commit w/o holding locks, since not allowed
-    // to sleep with locks.
-    commit();
-    acquire(&log.lock);
-    log.committing = 0;
-    wakeup(&log);
-    release(&log.lock);
-  }
-
 }
 
 // Copy modified blocks from cache to log.
@@ -241,13 +226,10 @@ log_write(struct buf *b)
 int
 sync(void)
 {
-  struct buf *buf = bread(log.dev, log.start);
+  //cprintf("syncing log at %d\n", log.start);
 
-  // flush log to memory
-  begin_op();
+  // Set state to committing
   log.committing = 1;
-  log_write(buf);
-  end_op();
 
   // call commit w/o holding locks, since not allowed
   // to sleep with locks.
@@ -257,7 +239,10 @@ sync(void)
   wakeup(&log);
   release(&log.lock);
 
-  cprintf("sync done.\n");
+  //cprintf("sync done.\n");
+
+  // TODO : return the number of flushed blocks
+  // TODO : multi direct 고려 필요
 
   return 0;
 }

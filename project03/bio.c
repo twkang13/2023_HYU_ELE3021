@@ -75,6 +75,10 @@ bget(uint dev, uint blockno)
     }
   }
 
+  if(bfull()){
+    sync();
+  }
+
   // Not cached; recycle an unused buffer.
   // Even if refcnt==0, B_DIRTY indicates a buffer is in use
   // because log.c has modified it but not yet committed it.
@@ -140,22 +144,22 @@ brelse(struct buf *b)
   release(&bcache.lock);
 }
 
+// Check whether the buffer cache is full or not.
+// Return 1 if full, 0 if not full.
 int
 bfull(void)
 {
   struct buf *buffer;
 
-  acquire(&bcache.lock);
-
   // Traverse the buffer cache to find an empty buffer.
   for(buffer = bcache.head.next; buffer != &bcache.head; buffer = buffer->next){
-    if(buffer->flags != B_DIRTY){
-      release(&bcache.lock);
+    if(buffer->refcnt != 0 || (buffer->flags & B_DIRTY) != 0){
       return 0;
     }
   }
 
-  release(&bcache.lock);
+  // If buffer is full, return 1
+  cprintf("Buffer is full.\n");
   return 1;
 }
 
