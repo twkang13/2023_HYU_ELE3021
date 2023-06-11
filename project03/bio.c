@@ -153,7 +153,7 @@ bfull(void)
 
   // Traverse the buffer cache to find an empty buffer.
   for(buffer = bcache.head.next; buffer != &bcache.head; buffer = buffer->next){
-    if(buffer->refcnt != 0 || (buffer->flags & B_DIRTY) != 0){
+    if(buffer->refcnt != 0 || buffer->flags != B_DIRTY){
       return 0;
     }
   }

@@ -48,7 +48,7 @@ struct log {
 struct log log;
 
 static void recover_from_log(void);
-static void commit();
+static int commit();
 
 void
 initlog(int dev)
@@ -156,8 +156,6 @@ end_op(void)
     wakeup(&log);
   }
   release(&log.lock);
-
-  // TODO : commit 매커니즘 지우고 sync가 호출되면 flush 발생하도록 변경
 }
 
 // Copy modified blocks from cache to log.
@@ -176,7 +174,7 @@ write_log(void)
   }
 }
 
-static void
+static int
 commit()
 {
   if (log.lh.n > 0) {
@@ -185,7 +183,11 @@ commit()
     install_trans(); // Now install writes to home locations
     log.lh.n = 0;
     write_head();    // Erase the transaction from the log
+
+    return log.lh.n;
   }
+
+  return 0;
 }
 
 // Caller has modified b->data and is done with the buffer.
@@ -226,23 +228,20 @@ log_write(struct buf *b)
 int
 sync(void)
 {
-  //cprintf("syncing log at %d\n", log.start);
-
   // Set state to committing
   log.committing = 1;
 
   // call commit w/o holding locks, since not allowed
   // to sleep with locks.
-  commit();
+  int i = commit();
   acquire(&log.lock);
   log.committing = 0;
   wakeup(&log);
   release(&log.lock);
 
-  //cprintf("sync done.\n");
-
-  // TODO : return the number of flushed blocks
   // TODO : multi direct 고려 필요
+  // multi indirect에 들어가면 해당 프로세스가 sleep
 
-  return 0;
+  // Return the number of flushed blocks
+  return i;
 }

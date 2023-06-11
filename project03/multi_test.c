@@ -70,7 +70,7 @@ test2()
     int fd = 0;
 
      // create a file
-    if((fd = open("mtest1", O_CREATE | O_RDWR)) < 0){
+    if((fd = open("mtest2", O_CREATE | O_RDWR)) < 0){
         printf(1, "multi_test: create failed\n");
         exit();
     }
@@ -105,12 +105,12 @@ test2()
     printf(1, "multi_test: close success\n");
 
     // remove the file
-    if(unlink("mtest1") < 0){
+    if(unlink("mtest2") < 0){
         printf(1, "multi_test: unlink failed\n");
         exit();
     }
     // check if file is removed
-    if((fd = open("mtest1", O_RDONLY)) < 0){
+    if((fd = open("mtest2", O_RDONLY)) < 0){
         printf(1, "multi_test: unlink success\n");
     }
     else{
