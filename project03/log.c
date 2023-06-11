@@ -174,17 +174,18 @@ write_log(void)
 static int
 commit()
 {
+  int n = -1;
+
   if (log.lh.n > 0) {
+    n = log.lh.n;
     write_log();     // Write modified blocks from cache to log
     write_head();    // Write header to disk -- the real commit
     install_trans(); // Now install writes to home locations
     log.lh.n = 0;
     write_head();    // Erase the transaction from the log
-
-    return log.lh.n;
   }
 
-  return -1;
+  return n;
 }
 
 // Caller has modified b->data and is done with the buffer.
@@ -224,7 +225,6 @@ int
 sync(void)
 {
   begin_op();
-  cprintf("sync : log.lh.n = %d, LOGSIZE = %d, log.size = %d\n", log.lh.n, LOGSIZE, log.size);
   int i = commit();
   end_op();
 
