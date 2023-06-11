@@ -129,9 +129,6 @@ begin_op(void)
   while(1){
     if(log.committing){
       sleep(&log, &log.lock);
-    } else if(log.lh.n + (log.outstanding+1)*MAXOPBLOCKS > LOGSIZE){
-      // this op might exhaust log space; wait for commit.
-      sleep(&log, &log.lock);
     } else {
       log.outstanding += 1;
       release(&log.lock);
@@ -149,7 +146,7 @@ end_op(void)
   log.outstanding -= 1; // file system 사용을 종료하겠다는 선언
   if(log.committing)
     panic("log.committing");
-  else {
+  if(log.outstanding > 0) {
     // begin_op() may be waiting for log space,
     // and decrementing log.outstanding has decreased
     // the amount of reserved space.
@@ -187,7 +184,7 @@ commit()
     return log.lh.n;
   }
 
-  return 0;
+  return -1;
 }
 
 // Caller has modified b->data and is done with the buffer.
@@ -204,8 +201,6 @@ log_write(struct buf *b)
 {
   int i;
 
-  if (log.lh.n >= LOGSIZE || log.lh.n >= log.size - 1)
-    panic("too big a transaction");
   if (log.outstanding < 1)
     panic("log_write outside of trans");
 
@@ -228,20 +223,26 @@ log_write(struct buf *b)
 int
 sync(void)
 {
-  // Set state to committing
-  log.committing = 1;
-
-  // call commit w/o holding locks, since not allowed
-  // to sleep with locks.
+  begin_op();
+  cprintf("sync : log.lh.n = %d, LOGSIZE = %d, log.size = %d\n", log.lh.n, LOGSIZE, log.size);
   int i = commit();
-  acquire(&log.lock);
-  log.committing = 0;
-  wakeup(&log);
-  release(&log.lock);
-
-  // TODO : multi direct 고려 필요
-  // multi indirect에 들어가면 해당 프로세스가 sleep
+  end_op();
 
   // Return the number of flushed blocks
   return i;
+}
+
+// Check if log buffer is about to full.
+int
+lfull(void)
+{
+  int full = 0;
+
+  acquire(&log.lock);
+  if (log.lh.n + (log.outstanding+1)*MAXOPBLOCKS > LOGSIZE || log.lh.n >= log.size - 1){
+    full = 1;
+  }
+  release(&log.lock);
+
+  return full;
 }

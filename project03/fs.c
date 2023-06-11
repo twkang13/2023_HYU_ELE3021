@@ -652,6 +652,10 @@ writei(struct inode *ip, char *src, uint off, uint n)
     brelse(bp);
   }
 
+  // sync if log buffer or cache is full
+  if(lfull() || bfull())
+    sync();
+
   if(n > 0 && off > ip->size){
     ip->size = off;
     iupdate(ip);

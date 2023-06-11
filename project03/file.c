@@ -148,9 +148,6 @@ filewrite(struct file *f, char *addr, int n)
       iunlock(f->ip);
       end_op();
 
-      // If sync is called, flush the buffer cache to disk
-      //sync();
-
       if(r < 0)
         break;
       if(r != n1)

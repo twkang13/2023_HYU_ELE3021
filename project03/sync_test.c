@@ -126,6 +126,8 @@ test2()
 {
     int fd = 0;
 
+    sync();
+
      // create a file
     if((fd = open("stest2", O_CREATE | O_RDWR)) < 0){
         printf(1, "sync_test: create failed\n");
@@ -138,7 +140,8 @@ test2()
         printf(1, "sync_test: write failed\n");
         exit();
     }
-    printf(1, "sync_test: write success\n");
+    int i = sync();
+    printf(1, "sync_test: write success(%d)\n", i);
 
     // read buffer from the file
     if(read(fd, buffer2, FSIZE2) < 0){
