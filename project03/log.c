@@ -143,7 +143,7 @@ void
 end_op(void)
 {
   acquire(&log.lock);
-  log.outstanding -= 1; // file system 사용을 종료하겠다는 선언
+  log.outstanding -= 1;
   if(log.committing)
     panic("log.committing");
   if(log.outstanding > 0) {

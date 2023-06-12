@@ -474,8 +474,6 @@ sys_symlink(void)
     return -1;
   }
 
-  // TODO : old를 찾고 그 디렉토리 받기
-
   // Set symbolic link
   safestrcpy(dp->symlink, old, PGSIZE);
   iupdate(dp);

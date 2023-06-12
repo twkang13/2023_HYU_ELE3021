@@ -155,7 +155,6 @@ bfull(void)
   }
 
   // If buffer is full, return 1
-  cprintf("Buffer is full.\n");
   return 1;
 }
 
