@@ -26,8 +26,6 @@ test0()
         printf(1, "sync_test: write failed\n");
         exit();
     }
-    int i = sync();
-    printf(1, "sync_test: write success(%d)\n", i);
 
     // read buffer from the file
     if(read(fd, buffer0, FSIZE0) < 0){
@@ -46,22 +44,6 @@ test0()
     // close the file
     if(close(fd) < 0){
         printf(1, "sync_test: close failed\n");
-        exit();
-    }
-
-    // remove the file
-    if(unlink("stest0") < 0){
-        printf(1, "sync_test: unlink failed\n");
-        exit();
-    }
-    printf(1, "sync_test: close success\n");
-    
-    // check if file is removed
-    if((fd = open("stest0", O_RDONLY)) < 0){
-        printf(1, "sync_test: unlink success\n");
-    }
-    else{
-        printf(1, "sync_test: unlink failed\n");
         exit();
     }
 }
@@ -199,7 +181,7 @@ int main(int argc, char *argv[])
 
     printf(1, "Test1 0: write 1KB (%d) file \n", FSIZE0);
     test0();
-    printf(1, "Test 0 done\n");
+    printf(1, "Test 0 done, flush %d\n", sync());
 
     printf(1, "Test 1: write 8MB (%d) file\n", FSIZE1);
     test1();

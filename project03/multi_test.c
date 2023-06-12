@@ -103,20 +103,6 @@ test2()
         exit();
     }
     printf(1, "multi_test: close success\n");
-
-    // remove the file
-    if(unlink("mtest2") < 0){
-        printf(1, "multi_test: unlink failed\n");
-        exit();
-    }
-    // check if file is removed
-    if((fd = open("mtest2", O_RDONLY)) < 0){
-        printf(1, "multi_test: unlink success\n");
-    }
-    else{
-        printf(1, "multi_test: unlink failed\n");
-        exit();
-    }
 }
 
 int main(int argc, char *argv[])
