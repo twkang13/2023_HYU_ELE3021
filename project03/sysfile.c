@@ -484,6 +484,8 @@ sys_symlink(void)
 }
 
 // Get information of symbolic link
+// If inode is not a symbolic link, return 0
+// If inode is a symbolic link, return 1 and set st
 int
 syminfo(char *path, struct stat *st)
 {
