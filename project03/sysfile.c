@@ -483,6 +483,39 @@ sys_symlink(void)
   return 0;
 }
 
+// Get information of symbolic link
+int
+syminfo(char *path, struct stat *st)
+{
+  struct inode *ip;
+
+  if((ip = namei(path)) == 0)
+    return 0;
+
+  ilock(ip);
+  if(ip->type != T_SYMLINK){
+    iunlockput(ip);
+    return 0;
+  }
+
+  stati(ip, st);
+  iunlockput(ip);
+  return 1;
+}
+
+// Wrapper function for syminfo
+int
+sys_syminfo(void)
+{
+  char *path;
+  struct stat *st;
+
+  if(argstr(0, &path) < 0 || argptr(1, (void*)&st, sizeof(*st)) < 0)
+    return -1;
+
+  return syminfo(path, st);
+}
+
 // Wrapper function for sync
 int
 sys_sync(void)

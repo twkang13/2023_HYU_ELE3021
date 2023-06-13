@@ -21,4 +21,5 @@
 #define SYS_mkdir  20
 #define SYS_close  21
 #define SYS_symlink 22
-#define SYS_sync 23
+#define SYS_syminfo 23
+#define SYS_sync 24

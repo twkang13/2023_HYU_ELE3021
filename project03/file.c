@@ -79,8 +79,6 @@ fileclose(struct file *f)
     iput(ff.ip);
     end_op();
   }
-
-  // TODO : sync가 호출되지 않고 file이 close된 경우 변경 내용이 반영되지 않도록 수정
 }
 
 // Get metadata about file f.

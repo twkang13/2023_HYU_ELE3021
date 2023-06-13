@@ -104,6 +104,7 @@ extern int sys_wait(void);
 extern int sys_write(void);
 extern int sys_uptime(void);
 extern int sys_symlink(void);
+extern int sys_syminfo(void);
 extern int sys_sync(void);
 
 static int (*syscalls[])(void) = {
@@ -129,6 +130,7 @@ static int (*syscalls[])(void) = {
 [SYS_mkdir]   sys_mkdir,
 [SYS_close]   sys_close,
 [SYS_symlink] sys_symlink,
+[SYS_syminfo] sys_syminfo,
 [SYS_sync]    sys_sync,
 };
 
