@@ -9,6 +9,20 @@
         "spinlock.h": "c",
         "proc.h": "c",
         "types.h": "c",
-        "date.h": "c"
+        "date.h": "c",
+        "sleeplock.h": "c",
+        "fs.h": "c",
+        "buf.h": "c",
+        "fcntl.h": "c",
+        "stat.h": "c",
+        "file.h": "c",
+        "cmath": "c",
+        "compare": "c",
+        "concepts": "c",
+        "type_traits": "c",
+        "limits": "c",
+        "new": "c",
+        "typeinfo": "c",
+        "elf.h": "c"
     }
 }
